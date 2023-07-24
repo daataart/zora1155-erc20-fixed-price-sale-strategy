@@ -14,7 +14,7 @@ import "zora-1155-contracts/minters/utils/LimitedMintPerAddress.sol";
 /// This contract is intended to wrap a ZoraCreatorFixedPriceSaleStrategy contract. It will use the wrapped
 /// contract's sales configuration for start/end times, max tokens per address, and funds recipient, but will
 /// use the prices set in this contract for the price per token.
-contract ERC20FixedPriceSaleStrategy is SaleStrategy, Ownable, Pausable {
+contract ERC20FixedPriceSaleStrategy is SaleStrategy, LimitedMintPerAddress, Ownable, Pausable {
 
     struct ERC20SalesConfig {
         uint64 maxTokensPerAddress;
@@ -23,11 +23,14 @@ contract ERC20FixedPriceSaleStrategy is SaleStrategy, Ownable, Pausable {
         IERC20 currency;
     }
 
-    event ERC20SalesSet(address tokenContract, uint256 tokenId, ERC20SalesConfig config);
+    error SaleEnded();
+    error SaleHasNotStarted();
+
+    event ERC20SaleSet(address tokenContract, uint256 tokenId, ERC20SalesConfig config);
     event ERC20Purchase(address tokenContract, uint256 tokenId, uint256 price, address buyer);
 
     /// target -> tokenId -> settings
-    mapping(address => mapping(uint256 => uint256)) internal salesConfigs;
+    mapping(address => mapping(uint256 => ERC20SalesConfig)) internal _salesConfigs;
 
     ZoraCreatorFixedPriceSaleStrategy public wrappedStrategy;
 
@@ -37,21 +40,33 @@ contract ERC20FixedPriceSaleStrategy is SaleStrategy, Ownable, Pausable {
         wrappedStrategy = wrappedStrategy_;
     }
 
+    function contractName() external pure returns (string memory) {
+        return "ERC20FixedPriceSaleStrategy";
+    }
+
+    function contractURI() external pure returns (string memory) {
+        return "neknel.world";
+    }
+
+    function contractVersion() external pure returns (string memory) {
+        return "1.0.0";
+    }
+
     /// @notice allows the owner of the contract to set the prices of multiple tokens, for multiple collections
     /// @notice setting a price to 0 will disable purchases of that token
-    /// @param prices_ an array of Price structs
-    function setSales(address tokenContract, uint256[] tokenIds, ERC20SalesConfig[] memory salesConfigs) onlyOwner whenNotPaused external {
+    /// @param tokenIds an array of tokenIds
+    /// @param salesConfigs an array of salesConfig structs
+    function setSales(uint256[] memory tokenIds, ERC20SalesConfig[] memory salesConfigs) whenNotPaused external {
         require(tokenIds.length == salesConfigs.length, "Zora1155WisdomBuyer: length mismatch");
         for (uint256 i = 0; i < tokenIds.length; i++) {
-            _salesConfigs[tokenContract][tokenIds[i]] = i;
-            emit ERC20SalesSet(tokenContract, tokenIds[i], salesConfigs[i]);
+            _salesConfigs[msg.sender][tokenIds[i]] = salesConfigs[i];
+            emit ERC20SaleSet(msg.sender, tokenIds[i], salesConfigs[i]);
         }
     }
 
     /// @notice Compiles and returns the commands needed to mint a token using this sales strategy
     /// @param tokenId The token ID to mint
     /// @param quantity The quantity of tokens to mint
-    /// @param ethValueSent The amount of ETH sent with the transaction
     /// @param minterArguments The arguments passed to the minter, which should be the address to mint to
     function requestMint(
         address,
@@ -62,8 +77,8 @@ contract ERC20FixedPriceSaleStrategy is SaleStrategy, Ownable, Pausable {
     ) external returns (ICreatorCommands.CommandSet memory commands) {
         address mintTo = abi.decode(minterArguments, (address));
 
-        SalesConfig memory externalConfig = wrappedStrategy.salesConfigs()[msg.sender][tokenId];
-        ERC20SalesConfig memory internalConfig = salesConfigs[msg.sender][tokenId];
+        ZoraCreatorFixedPriceSaleStrategy.SalesConfig memory externalConfig = wrappedStrategy.sale(msg.sender, tokenId);
+        ERC20SalesConfig memory internalConfig = _salesConfigs[msg.sender][tokenId];
 
         // If sales config does not exist this first check will always fail.
 
@@ -95,15 +110,15 @@ contract ERC20FixedPriceSaleStrategy is SaleStrategy, Ownable, Pausable {
 
     /// @notice Deletes the sale config for a given token
     function resetSale(uint256 tokenId) external override {
-        delete salesConfigs[msg.sender][tokenId];
+        delete _salesConfigs[msg.sender][tokenId];
 
         // Deleted sale emit event
-        emit SaleSet(msg.sender, tokenId, salesConfigs[msg.sender][tokenId]);
+        emit ERC20SaleSet(msg.sender, tokenId, _salesConfigs[msg.sender][tokenId]);
     }
 
     /// @notice Returns the sale config for a given token
-    function sale(address tokenContract, uint256 tokenId) external view returns (SalesConfig memory) {
-        return salesConfigs[tokenContract][tokenId];
+    function sale(address tokenContract, uint256 tokenId) external view returns (ERC20SalesConfig memory) {
+        return _salesConfigs[tokenContract][tokenId];
     }
 
     function supportsInterface(bytes4 interfaceId) public pure virtual override(LimitedMintPerAddress, SaleStrategy) returns (bool) {
