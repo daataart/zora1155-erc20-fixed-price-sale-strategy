@@ -6,6 +6,8 @@ import "src/ERC20FixedPriceSaleStrategy.sol";
 import "zora-1155-contracts/interfaces/IZoraCreator1155Factory.sol";
 import "zora-1155-contracts/interfaces/IZoraCreator1155.sol";
 import { ZoraCreatorFixedPriceSaleStrategy } from "zora-1155-contracts/minters/fixed-price/ZoraCreatorFixedPriceSaleStrategy.sol";
+import {ILimitedMintPerAddress} from "zora-1155-contracts/interfaces/ILimitedMintPerAddress.sol";
+
 import "zora-1155-contracts/interfaces/ICreatorRoyaltiesControl.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "forge-std/StdUtils.sol";
@@ -22,21 +24,18 @@ contract TestERC20FixedPriceSaleStrategy is Test {
     // Define a variable to hold the wrapper strategy
     ERC20FixedPriceSaleStrategy wrapperStrategy;
     // Define an address for testing
-    address alice;
-    address bob;
+    address payable alice;
+    address payable bob;
 
     function setUp() public {
         // Create a new instance of the wrapper strategy, at the moment of setup, it is identical to the wrapped strategy (Zora Create Fixed Price Sale Strategy)
         wrapperStrategy = new ERC20FixedPriceSaleStrategy(wrappedStrategy);
         // Make mock addresses for the tests
-        alice = makeAddr("alice");
-        alice = makeAddr("bob");
+        alice = payable(makeAddr("alice"));
+        bob = payable(makeAddr("bob"));
     }
 
     function testBar() public {
-
-
-        address payable alice = payable(address(0x999));
 
         vm.startPrank(alice);
          //A dynamic array of bytes named actions is created with a size of 0. This array is used to store actions, but in this case, it is initialized as an empty array.
@@ -112,13 +111,17 @@ contract TestERC20FixedPriceSaleStrategy is Test {
 
         vm.stopPrank();
         
-        address bob = address(0x888);
-
         vm.startPrank(bob);
         deal(address(wisdomCurrency), bob, 1 ether);
         deal(bob, 1 ether);
 
         wisdomCurrency.approve(address(wrapperStrategy), 1 ether);
+        // bob mints from the tokenContract
+        // the mint function takes the following parameters:
+        // to: The address of the recipient of the token.
+        // tokenId: The ID of the token.
+        // amount: The amount of tokens to mint.
+        // data: The data to be passed to the token contract.
 
         tokenContract.mint{value: 0.1 ether}(wrapperStrategy, 1, 1, abi.encode(bob));   
 
@@ -128,8 +131,6 @@ contract TestERC20FixedPriceSaleStrategy is Test {
     }
 
     function test_SaleStart() external {
-        
-        address payable alice = payable(address(0x999));
         // create a new zora collection from the factory
         
         vm.startPrank(alice);
@@ -197,16 +198,11 @@ contract TestERC20FixedPriceSaleStrategy is Test {
 
         vm.stopPrank();
 
-
-          
-        address bob = address(0x888);
         vm.deal(bob, 20 ether);
-
 
         vm.expectRevert(abi.encodeWithSignature("SaleHasNotStarted()"));
         vm.prank(bob);
         tokenContract.mint{value: 10 ether}(wrapperStrategy, newTokenId, 10, abi.encode(bob));
-
     }
 
 
@@ -287,6 +283,98 @@ contract TestERC20FixedPriceSaleStrategy is Test {
         vm.prank(bob);
         tokenContract.mint{value: 10 ether}(wrapperStrategy, newTokenId, 10, abi.encode(bob));
 
+    }
+
+    function test_MaxTokensPerAddress() external {
+    
+        address payable alice = payable(address(0x999));
+        // create a new zora collection from the factory
+        
+        vm.startPrank(alice);
+        bytes[] memory actions = new bytes[](0);
+        address _tokenContract = factory.createContract("test", "test", ICreatorRoyaltiesControl.RoyaltyConfiguration(0, 0, address(0)), alice, actions);
+        IZoraCreator1155 tokenContract = IZoraCreator1155(_tokenContract);
+        // set up a new token
+        uint256 newTokenId = tokenContract.setupNewToken("", 100);
+
+        // give the wrappedStrategy and the wrapperStrategy the minter role
+        // this is the original Strategy from Zora
+        tokenContract.addPermission(1, address(wrappedStrategy), tokenContract.PERMISSION_BIT_MINTER());
+        // this is the new Strategy
+        tokenContract.addPermission(1, address(wrapperStrategy), tokenContract.PERMISSION_BIT_MINTER());
+
+        // set up the sale on the wrapped strategy, this is done via the token contract
+        // 
+        ZoraCreatorFixedPriceSaleStrategy.SalesConfig memory salesConfig = ZoraCreatorFixedPriceSaleStrategy.SalesConfig({
+            saleStart: 0,
+            saleEnd: 1790219309,
+            maxTokensPerAddress: 1,
+            pricePerToken: 0.5 ether,
+            fundsRecipient: address(0)
+        });
+
+        // call the wrapped strategy to set up the sale
+        tokenContract.callSale(
+            newTokenId,
+            wrappedStrategy,
+            abi.encodeWithSelector(
+                ZoraCreatorFixedPriceSaleStrategy.setSale.selector,
+                newTokenId,
+                ZoraCreatorFixedPriceSaleStrategy.SalesConfig({
+                    pricePerToken: 1 ether,
+                    saleStart: 0,
+                    saleEnd: uint64(1 days),
+                    maxTokensPerAddress: 1,
+                    fundsRecipient: address(0)
+                })
+            )
+        );
+
+        ERC20FixedPriceSaleStrategy.ERC20SalesConfig memory erc20salesconfig = ERC20FixedPriceSaleStrategy.ERC20SalesConfig({
+            maxTokensPerAddress: 1,
+            fundsRecipient: alice,
+            price: 1 ether,
+            currency: wisdomCurrency
+        });
+        
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = newTokenId;
+        ERC20FixedPriceSaleStrategy.ERC20SalesConfig[] memory salesConfigs = new ERC20FixedPriceSaleStrategy.ERC20SalesConfig[](1);
+        salesConfigs[0] = erc20salesconfig;
+        
+        // call the wrapper strategy to set up the sale
+        tokenContract.callSale(
+            newTokenId,
+            wrapperStrategy,
+            abi.encodeWithSelector(
+                ERC20FixedPriceSaleStrategy.setSales.selector,
+                tokenIds,
+                salesConfigs
+            )
+        );
+
+        vm.stopPrank();
+
+        vm.warp(0.5 days);
+
+        address bob = address(322);
+        vm.deal(bob, 20 ether);
+        deal(address(wisdomCurrency), bob, 1 ether);
+
+        wisdomCurrency.approve(address(wrapperStrategy), 1 ether);
+
+        vm.prank(bob);
+
+        vm.expectRevert(abi.encodeWithSelector(ILimitedMintPerAddress.UserExceedsMintLimit.selector, bob, 1, 6));
+
+         // bob mints from the tokenContract
+        // the mint function takes the following parameters:
+        //value: The amount of ether to send with the transaction.
+        // to: The address of the recipient of the token.
+        // tokenId: The ID of the token.
+        // amount: The amount of tokens to mint.
+        // data: The data to be passed to the token contract.
+        tokenContract.mint{value: 6 ether}(wrapperStrategy, newTokenId, 6, abi.encode(bob));
     }
 
 }
