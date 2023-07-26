@@ -54,13 +54,11 @@ contract ERC20FixedPriceSaleStrategy is SaleStrategy, LimitedMintPerAddress, Own
 
     /// @notice allows the owner of the contract to set the prices of multiple tokens, for multiple collections
     /// @notice setting a price to 0 will disable purchases of that token
-    /// @param tokenIds an array of tokenIds
-    /// @param salesConfigs an array of salesConfig structs
-    function setSales(uint256[] memory tokenIds, ERC20SalesConfig[] memory salesConfigs) whenNotPaused external {
-        require(tokenIds.length == salesConfigs.length, "Zora1155WisdomBuyer: length mismatch");
-        for (uint256 i = 0; i < tokenIds.length; i++) {
-            _salesConfigs[msg.sender][tokenIds[i]] = salesConfigs[i];
-            emit ERC20SaleSet(msg.sender, tokenIds[i], salesConfigs[i]);
+    /// @param tokenId the tokenId
+    /// @param salesConfig the salesConfig
+    function setSale(uint256 tokenId, ERC20SalesConfig memory salesConfig) whenNotPaused external {
+            _salesConfigs[msg.sender][tokenId] = salesConfig;
+            emit ERC20SaleSet(msg.sender, tokenId, salesConfig);
         }
     }
 
@@ -121,7 +119,8 @@ contract ERC20FixedPriceSaleStrategy is SaleStrategy, LimitedMintPerAddress, Own
         return _salesConfigs[tokenContract][tokenId];
     }
 
+
     function supportsInterface(bytes4 interfaceId) public pure virtual override(LimitedMintPerAddress, SaleStrategy) returns (bool) {
         return super.supportsInterface(interfaceId) || LimitedMintPerAddress.supportsInterface(interfaceId) || SaleStrategy.supportsInterface(interfaceId);
     }
-}
+
