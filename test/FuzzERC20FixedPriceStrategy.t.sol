@@ -104,9 +104,9 @@ contract TestERC20FixedPriceSaleStrategy is Test {
             newTokenId,
             wrapperStrategy,
             abi.encodeWithSelector(
-                ERC20FixedPriceSaleStrategy.setSales.selector,
-                tokenIds,
-                salesConfigs
+                ERC20FixedPriceSaleStrategy.setSale.selector,
+                tokenIds[0],
+                salesConfigs[0]
             )
         );
 

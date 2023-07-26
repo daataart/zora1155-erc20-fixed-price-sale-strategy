@@ -60,7 +60,7 @@ contract ERC20FixedPriceSaleStrategy is SaleStrategy, LimitedMintPerAddress, Own
             _salesConfigs[msg.sender][tokenId] = salesConfig;
             emit ERC20SaleSet(msg.sender, tokenId, salesConfig);
         }
-    }
+    
 
     /// @notice Compiles and returns the commands needed to mint a token using this sales strategy
     /// @param tokenId The token ID to mint
@@ -124,3 +124,4 @@ contract ERC20FixedPriceSaleStrategy is SaleStrategy, LimitedMintPerAddress, Own
         return super.supportsInterface(interfaceId) || LimitedMintPerAddress.supportsInterface(interfaceId) || SaleStrategy.supportsInterface(interfaceId);
     }
 
+}
