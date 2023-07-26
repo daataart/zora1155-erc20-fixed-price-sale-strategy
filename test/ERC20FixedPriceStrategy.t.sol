@@ -17,7 +17,9 @@ IZoraCreator1155Factory constant factory = IZoraCreator1155Factory(0xA6C5f2DE915
 // wrappedStrategy: This is a constant variable that is assigned the address where the ZoraCreatorFixedPriceSaleStrategy contract is deployed.
 ZoraCreatorFixedPriceSaleStrategy constant wrappedStrategy = ZoraCreatorFixedPriceSaleStrategy(0x5Ff5a77dD2214d863aCA809C0168941052d9b180);
 // wisdomCurrency: This is a constant variable that is assigned the address where the wisdomCurrency ERC20 token contract is deployed.
+// by defining this as an IERC20, we can call the ERC20 functions on this contract.
 IERC20 constant wisdomCurrency = IERC20(0xF6b0Dc792B80a781C872B2f0B7787BfE72546B6F);
+IERC20 constant usdc = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
 
 contract TestERC20FixedPriceSaleStrategy is Test {
     
@@ -35,7 +37,7 @@ contract TestERC20FixedPriceSaleStrategy is Test {
         bob = payable(makeAddr("bob"));
     }
 
-    function testBar() public {
+    function test_MintFlow() public {
 
         vm.startPrank(alice);
          //A dynamic array of bytes named actions is created with a size of 0. This array is used to store actions, but in this case, it is initialized as an empty array.
@@ -209,6 +211,8 @@ contract TestERC20FixedPriceSaleStrategy is Test {
     function test_SaleEnd() external {
 
         address payable alice = payable(address(0x999));
+      
+
         // create a new zora collection from the factory
         
         vm.startPrank(alice);
@@ -262,7 +266,7 @@ contract TestERC20FixedPriceSaleStrategy is Test {
         tokenIds[0] = newTokenId;
         ERC20FixedPriceSaleStrategy.ERC20SalesConfig[] memory salesConfigs = new ERC20FixedPriceSaleStrategy.ERC20SalesConfig[](1);
         salesConfigs[0] = erc20salesconfig;
-        
+  
         // call the wrapper strategy to set up the sale
         tokenContract.callSale(
             newTokenId,
@@ -375,6 +379,137 @@ contract TestERC20FixedPriceSaleStrategy is Test {
         // amount: The amount of tokens to mint.
         // data: The data to be passed to the token contract.
         tokenContract.mint{value: 6 ether}(wrapperStrategy, newTokenId, 6, abi.encode(bob));
+    }
+
+    function test_SaleForDifferentERC20s() external {
+        uint256 initialWisdomBalance = wisdomCurrency.balanceOf(alice);
+        uint256 initialUsdcBalance = usdc.balanceOf(alice);
+        vm.startPrank(alice);
+        bytes[] memory actions = new bytes[](0);
+        address _tokenContract = factory.createContract("test", "test", ICreatorRoyaltiesControl.RoyaltyConfiguration(0, 0, address(0)), alice, actions);
+        IZoraCreator1155 tokenContract = IZoraCreator1155(_tokenContract);
+        uint256 FirstTokenId = tokenContract.setupNewToken("", 100);
+        uint256 SecondTokenId = tokenContract.setupNewToken("", 100);
+        tokenContract.addPermission(1, address(wrappedStrategy), tokenContract.PERMISSION_BIT_MINTER());
+        tokenContract.addPermission(1, address(wrapperStrategy), tokenContract.PERMISSION_BIT_MINTER());
+
+        ZoraCreatorFixedPriceSaleStrategy.SalesConfig memory salesConfig = ZoraCreatorFixedPriceSaleStrategy.SalesConfig({
+            saleStart: 0,
+            saleEnd: type(uint64).max,
+            maxTokensPerAddress: 100,
+            pricePerToken: 1 ether,
+            fundsRecipient: address(0)
+        });
+
+        tokenContract.callSale(
+            FirstTokenId,
+            wrappedStrategy,
+            abi.encodeWithSelector(
+                ZoraCreatorFixedPriceSaleStrategy.setSale.selector,
+                FirstTokenId,
+                ZoraCreatorFixedPriceSaleStrategy.SalesConfig({
+                    pricePerToken: 1 ether,
+                    saleStart: 0,
+                    saleEnd: uint64(1 days),
+                    maxTokensPerAddress: 1,
+                    fundsRecipient: address(0)
+                })
+            )
+        );
+
+        tokenContract.callSale(
+            SecondTokenId,
+            wrappedStrategy,
+            abi.encodeWithSelector(
+                ZoraCreatorFixedPriceSaleStrategy.setSale.selector,
+                SecondTokenId,
+                ZoraCreatorFixedPriceSaleStrategy.SalesConfig({
+                    pricePerToken: 1 ether,
+                    saleStart: 0,
+                    saleEnd: uint64(1 days),
+                    maxTokensPerAddress: 1,
+                    fundsRecipient: address(0)
+                })
+            )
+        );
+
+        ERC20FixedPriceSaleStrategy.ERC20SalesConfig memory wisdomCurrencySalesConfig = ERC20FixedPriceSaleStrategy.ERC20SalesConfig({
+            maxTokensPerAddress: 1,
+            fundsRecipient: alice,
+            price: 1 ether,
+            currency: wisdomCurrency
+        });
+
+         ERC20FixedPriceSaleStrategy.ERC20SalesConfig memory usdcSalesConfig = ERC20FixedPriceSaleStrategy.ERC20SalesConfig({
+            maxTokensPerAddress: 1,
+            fundsRecipient: alice,
+            price: 1 ether,
+            currency: wisdomCurrency
+        });
+
+        uint256[] memory firstTokenIds = new uint256[](1);
+        uint256[] memory secondTokenIds = new uint256[](1);
+        firstTokenIds[0] = FirstTokenId;
+        secondTokenIds[0] = SecondTokenId;
+        ERC20FixedPriceSaleStrategy.ERC20SalesConfig[] memory wisdomSalesConfigs = new ERC20FixedPriceSaleStrategy.ERC20SalesConfig[](1);
+        ERC20FixedPriceSaleStrategy.ERC20SalesConfig[] memory usdcSalesConfigs = new ERC20FixedPriceSaleStrategy.ERC20SalesConfig[](1);
+        wisdomSalesConfigs[0] = wisdomCurrencySalesConfig;
+        usdcSalesConfigs[0] = usdcSalesConfig;
+
+        tokenContract.callSale(
+            FirstTokenId,
+            wrapperStrategy,
+            abi.encodeWithSelector(
+                ERC20FixedPriceSaleStrategy.setSales.selector,
+                firstTokenIds,
+               wisdomSalesConfigs
+            )
+        );
+
+        tokenContract.callSale(
+            FirstTokenId,
+            wrapperStrategy,
+            abi.encodeWithSelector(
+                ERC20FixedPriceSaleStrategy.setSales.selector,
+                secondTokenIds,
+                usdcSalesConfigs
+            )
+        );
+
+
+        vm.stopPrank();
+
+        address bob = address(322);
+        vm.deal(bob, 20 ether);
+        deal(address(wisdomCurrency), bob, 1 ether);
+        deal(address(usdc), bob, 1 ether);
+
+        // Test here that the transaction fails if not approved?
+        wisdomCurrency.approve(address(wrapperStrategy), 1 ether);
+        usdc.approve(address(wrapperStrategy), 1 ether);
+
+        vm.prank(bob);
+
+
+
+        uint256 updatedWisdomBalance = wisdomCurrency.balanceOf(alice);
+        uint256 updatedUsdcBalance = usdc.balanceOf(alice);
+
+        // the mint function takes the following parameters:
+        // to: The address of the recipient of the token.
+        // tokenId: The ID of the token.
+        // amount: The amount of tokens to mint.
+        // data: The data to be passed to the token contract.
+
+        tokenContract.mint{value: 1 ether}(wrapperStrategy, 1, 1, abi.encode(bob));   
+        tokenContract.mint{value: 1 ether}(wrapperStrategy, 2, 1, abi.encode(bob));   
+
+
+
+        assertEq(updatedWisdomBalance, 1 ether, "Incorrect fundsRecipient balance");
+        assertEq(updatedUsdcBalance, 1 ether, "Incorrect fundsRecipient balance");
+        // Test that bob's balance is reduced by token price multiplied by number minted
+        // Test that alice's balance is increased by token price multiplied by number minted
     }
 
 }
