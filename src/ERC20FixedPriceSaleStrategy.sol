@@ -15,7 +15,6 @@ import "zora-1155-contracts/minters/utils/LimitedMintPerAddress.sol";
 /// contract's sales configuration for start/end times, max tokens per address, and funds recipient, but will
 /// use the prices set in this contract for the price per token.
 contract ERC20FixedPriceSaleStrategy is SaleStrategy, LimitedMintPerAddress, Ownable, Pausable {
-
     struct ERC20SalesConfig {
         uint64 maxTokensPerAddress;
         address fundsRecipient;
@@ -36,7 +35,7 @@ contract ERC20FixedPriceSaleStrategy is SaleStrategy, LimitedMintPerAddress, Own
 
     using SaleCommandHelper for ICreatorCommands.CommandSet;
 
-    constructor (ZoraCreatorFixedPriceSaleStrategy wrappedStrategy_) {
+    constructor(ZoraCreatorFixedPriceSaleStrategy wrappedStrategy_) {
         wrappedStrategy = wrappedStrategy_;
     }
 
@@ -56,23 +55,19 @@ contract ERC20FixedPriceSaleStrategy is SaleStrategy, LimitedMintPerAddress, Own
     /// @notice setting a price to 0 will disable purchases of that token
     /// @param tokenId the tokenId
     /// @param salesConfig the salesConfig
-    function setSale(uint256 tokenId, ERC20SalesConfig memory salesConfig) whenNotPaused external {
-            _salesConfigs[msg.sender][tokenId] = salesConfig;
-            emit ERC20SaleSet(msg.sender, tokenId, salesConfig);
-        }
-    
+    function setSale(uint256 tokenId, ERC20SalesConfig memory salesConfig) external whenNotPaused {
+        _salesConfigs[msg.sender][tokenId] = salesConfig;
+        emit ERC20SaleSet(msg.sender, tokenId, salesConfig);
+    }
 
     /// @notice Compiles and returns the commands needed to mint a token using this sales strategy
     /// @param tokenId The token ID to mint
     /// @param quantity The quantity of tokens to mint
     /// @param minterArguments The arguments passed to the minter, which should be the address to mint to
-    function requestMint(
-        address,
-        uint256 tokenId,
-        uint256 quantity,
-        uint256,
-        bytes calldata minterArguments
-    ) external returns (ICreatorCommands.CommandSet memory commands) {
+    function requestMint(address, uint256 tokenId, uint256 quantity, uint256, bytes calldata minterArguments)
+        external
+        returns (ICreatorCommands.CommandSet memory commands)
+    {
         address mintTo = abi.decode(minterArguments, (address));
 
         ZoraCreatorFixedPriceSaleStrategy.SalesConfig memory externalConfig = wrappedStrategy.sale(msg.sender, tokenId);
@@ -103,7 +98,7 @@ contract ERC20FixedPriceSaleStrategy is SaleStrategy, LimitedMintPerAddress, Own
 
         emit ERC20Purchase(msg.sender, tokenId, internalConfig.price, mintTo);
 
-        internalConfig.currency.transferFrom(mintTo, recipient, internalConfig.price);
+        internalConfig.currency.transferFrom(mintTo, recipient, internalConfig.price * quantity);
     }
 
     /// @notice Deletes the sale config for a given token
@@ -119,9 +114,14 @@ contract ERC20FixedPriceSaleStrategy is SaleStrategy, LimitedMintPerAddress, Own
         return _salesConfigs[tokenContract][tokenId];
     }
 
-
-    function supportsInterface(bytes4 interfaceId) public pure virtual override(LimitedMintPerAddress, SaleStrategy) returns (bool) {
-        return super.supportsInterface(interfaceId) || LimitedMintPerAddress.supportsInterface(interfaceId) || SaleStrategy.supportsInterface(interfaceId);
+    function supportsInterface(bytes4 interfaceId)
+        public
+        pure
+        virtual
+        override(LimitedMintPerAddress, SaleStrategy)
+        returns (bool)
+    {
+        return super.supportsInterface(interfaceId) || LimitedMintPerAddress.supportsInterface(interfaceId)
+            || SaleStrategy.supportsInterface(interfaceId);
     }
-
 }

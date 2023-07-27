@@ -5,7 +5,8 @@ import {Test, Vm} from "forge-std/Test.sol";
 import "src/ERC20FixedPriceSaleStrategy.sol";
 import "zora-1155-contracts/interfaces/IZoraCreator1155Factory.sol";
 import "zora-1155-contracts/interfaces/IZoraCreator1155.sol";
-import { ZoraCreatorFixedPriceSaleStrategy } from "zora-1155-contracts/minters/fixed-price/ZoraCreatorFixedPriceSaleStrategy.sol";
+import {ZoraCreatorFixedPriceSaleStrategy} from
+    "zora-1155-contracts/minters/fixed-price/ZoraCreatorFixedPriceSaleStrategy.sol";
 import {ILimitedMintPerAddress} from "zora-1155-contracts/interfaces/ILimitedMintPerAddress.sol";
 
 import "zora-1155-contracts/interfaces/ICreatorRoyaltiesControl.sol";
@@ -15,13 +16,13 @@ import "forge-std/StdUtils.sol";
 // factory: This is a constant variable that is assigned the address where the IZoraCreator1155Factory contract is deployed.
 IZoraCreator1155Factory constant factory = IZoraCreator1155Factory(0xA6C5f2DE915240270DaC655152C3f6A91748cb85);
 // wrappedStrategy: This is a constant variable that is assigned the address where the ZoraCreatorFixedPriceSaleStrategy contract is deployed.
-ZoraCreatorFixedPriceSaleStrategy constant wrappedStrategy = ZoraCreatorFixedPriceSaleStrategy(0x5Ff5a77dD2214d863aCA809C0168941052d9b180);
+ZoraCreatorFixedPriceSaleStrategy constant wrappedStrategy =
+    ZoraCreatorFixedPriceSaleStrategy(0x5Ff5a77dD2214d863aCA809C0168941052d9b180);
 // wisdomCurrency: This is a constant variable that is assigned the address where the wisdomCurrency ERC20 token contract is deployed.
 // by defining this as an IERC20, we can call the ERC20 functions on this contract.
 IERC20 constant wisdomCurrency = IERC20(0xF6b0Dc792B80a781C872B2f0B7787BfE72546B6F);
 
 contract TestERC20FixedPriceSaleStrategy is Test {
-    
     // Define a variable to hold the wrapper strategy
     ERC20FixedPriceSaleStrategy wrapperStrategy;
     // Define an address for testing
@@ -37,9 +38,8 @@ contract TestERC20FixedPriceSaleStrategy is Test {
     }
 
     function testFuzz_MintFlow() public {
-
         vm.startPrank(alice);
-         //A dynamic array of bytes named actions is created with a size of 0. This array is used to store actions, but in this case, it is initialized as an empty array.
+        //A dynamic array of bytes named actions is created with a size of 0. This array is used to store actions, but in this case, it is initialized as an empty array.
         bytes[] memory actions = new bytes[](0);
         // The createContract function is called on the factory contract, which creates a new Zora collection. The function takes the following parameters:
         // name: The name of the collection.
@@ -47,7 +47,9 @@ contract TestERC20FixedPriceSaleStrategy is Test {
         // royalty: The royalty configuration of the collection.
         // creator: The address of the creator of the collection.
         // actions: The actions that are to be performed on the collection.
-        address _tokenContract = factory.createContract("test", "test", ICreatorRoyaltiesControl.RoyaltyConfiguration(0, 0, address(0)), alice, actions);
+        address _tokenContract = factory.createContract(
+            "test", "test", ICreatorRoyaltiesControl.RoyaltyConfiguration(0, 0, address(0)), alice, actions
+        );
         // The address of the new collection (_tokenContract) is assigned to the variable tokenContract.
         IZoraCreator1155 tokenContract = IZoraCreator1155(_tokenContract);
         // set up a new token, setupNewToken takes two parameters:
@@ -87,31 +89,24 @@ contract TestERC20FixedPriceSaleStrategy is Test {
             )
         );
 
-        ERC20FixedPriceSaleStrategy.ERC20SalesConfig memory erc20salesconfig = ERC20FixedPriceSaleStrategy.ERC20SalesConfig({
-            maxTokensPerAddress: 100,
-            fundsRecipient: alice,
-            price: 1 ether,
-            currency: wisdomCurrency
-        });
+        ERC20FixedPriceSaleStrategy.ERC20SalesConfig memory erc20salesconfig = ERC20FixedPriceSaleStrategy
+            .ERC20SalesConfig({maxTokensPerAddress: 100, fundsRecipient: alice, price: 1 ether, currency: wisdomCurrency});
 
         uint256[] memory tokenIds = new uint256[](1);
         tokenIds[0] = newTokenId;
-        ERC20FixedPriceSaleStrategy.ERC20SalesConfig[] memory salesConfigs = new ERC20FixedPriceSaleStrategy.ERC20SalesConfig[](1);
+        ERC20FixedPriceSaleStrategy.ERC20SalesConfig[] memory salesConfigs =
+            new ERC20FixedPriceSaleStrategy.ERC20SalesConfig[](1);
         salesConfigs[0] = erc20salesconfig;
-        
+
         // call the wrapper strategy to set up the sale
         tokenContract.callSale(
             newTokenId,
             wrapperStrategy,
-            abi.encodeWithSelector(
-                ERC20FixedPriceSaleStrategy.setSale.selector,
-                tokenIds[0],
-                salesConfigs[0]
-            )
+            abi.encodeWithSelector(ERC20FixedPriceSaleStrategy.setSale.selector, tokenIds[0], salesConfigs[0])
         );
 
         vm.stopPrank();
-        
+
         vm.startPrank(bob);
         deal(address(wisdomCurrency), bob, 1 ether);
         deal(bob, 1 ether);
@@ -124,7 +119,7 @@ contract TestERC20FixedPriceSaleStrategy is Test {
         // amount: The amount of tokens to mint.
         // data: The data to be passed to the token contract.
 
-        tokenContract.mint{value: 0.1 ether}(wrapperStrategy, 1, 1, abi.encode(bob));   
+        tokenContract.mint{value: 0.1 ether}(wrapperStrategy, 1, 1, abi.encode(bob));
 
         assertEq(wisdomCurrency.balanceOf(address(alice)), 1 ether);
         assertEq(wisdomCurrency.balanceOf(address(bob)), 0 ether);

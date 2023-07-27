@@ -17,7 +17,9 @@ test multiple contract owners using the same strategy
 
 i can set the limit per address to 0 on the eth side, stopping mints for eth, but still allowing mints for erc20s 
 
-bob's balance is reduced by token price multiplied by number minted
-alice's balance is increased by token price multiplied by number minted (minus zora fee?)
+bob's balance is reduced by token price multiplied by number minted [DONE]
 
+alice's balance is increased by token price multiplied by number minted (minus zora fee?) [DONE]
 test that the zora fee is deducted correctly
+
+Check for overflow...
