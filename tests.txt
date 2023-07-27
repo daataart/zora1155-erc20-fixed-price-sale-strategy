@@ -8,12 +8,12 @@ test funds recipient for mulitple sales, across multiple 1155 contracts and toke
 alice's balance is increased by token price multiplied by number minted (minus zora fee?) [DONE]
 Check for overflow... [DONE]
 bob's balance is reduced by token price multiplied by number minted [DONE]
+test_ResetSale [DONE]
 
 
 
 
 test_MintedPerRecipientGetter
-test_ResetSale
 test_fixedPriceSaleSupportsInterface
 
 
