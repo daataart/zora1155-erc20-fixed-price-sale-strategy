@@ -28,6 +28,7 @@ contract TestERC20FixedPriceSaleStrategy is Test {
     // Define an address for testing
     address payable alice;
     address payable bob;
+    address payable gav;
 
     function setUp() public {
         // Create a new instance of the wrapper strategy, at the moment of setup, it is identical to the wrapped strategy (Zora Create Fixed Price Sale Strategy)
@@ -35,6 +36,7 @@ contract TestERC20FixedPriceSaleStrategy is Test {
         // Make mock addresses for the tests
         alice = payable(makeAddr("alice"));
         bob = payable(makeAddr("bob"));
+        gav = payable(makeAddr("gav"));
     }
 
     function test_MintFlow() public {
@@ -655,8 +657,10 @@ contract TestERC20FixedPriceSaleStrategy is Test {
     }
 
     function test_MultipleRecipientsAndERC20s() external {
-        uint256 initialWisdomBalance = wisdomCurrency.balanceOf(alice);
-        uint256 initialUsdcBalance = usdc.balanceOf(alice);
+        uint256 initialWisdomBalanceAlice = wisdomCurrency.balanceOf(alice);
+        uint256 initialUsdcBalanceAlice = usdc.balanceOf(alice);
+        uint256 initialWisdomBalanceGav = wisdomCurrency.balanceOf(gav);
+        uint256 initialUsdcBalanceGav = usdc.balanceOf(gav);
         vm.startPrank(alice);
 
         bytes[] memory actions = new bytes[](0);
@@ -683,7 +687,7 @@ contract TestERC20FixedPriceSaleStrategy is Test {
             fundsRecipient: address(0)
         });
 
-        // call the wrapped strategy to set up the sale
+
         firstTokenContract.callSale(
             firstTokenId,
             wrappedStrategy,
@@ -728,7 +732,7 @@ contract TestERC20FixedPriceSaleStrategy is Test {
 
         ERC20FixedPriceSaleStrategy.ERC20SalesConfig memory usdcSalesConfig = ERC20FixedPriceSaleStrategy.ERC20SalesConfig({
             maxTokensPerAddress: 100,
-            fundsRecipient: alice,
+            fundsRecipient: gav,
             price: 1 ether,
             currency: usdc
         });
@@ -766,10 +770,14 @@ contract TestERC20FixedPriceSaleStrategy is Test {
 
         firstTokenContract.mint{value: 0.1 ether}(wrapperStrategy, firstTokenId, 1, abi.encode(bob)); 
         secondTokenContract.mint{value: 0.1 ether}(wrapperStrategy, secondTokenId, 1, abi.encode(bob));   
-  
+    
+        // Alice only gained $wisdomCurrency
+        assertEq(wisdomCurrency.balanceOf(address(alice)), initialWisdomBalanceAlice + 1 ether);
+        assertEq(usdc.balanceOf(address(alice)), initialUsdcBalanceAlice);
 
-        assertEq(wisdomCurrency.balanceOf(address(alice)), initialWisdomBalance + 1 ether);
-        assertEq(usdc.balanceOf(address(alice)), initialUsdcBalance + 1 ether);
+        // Gav only gained USDC
+        assertEq(usdc.balanceOf(address(gav)), initialUsdcBalanceGav + 1 ether);
+        assertEq(wisdomCurrency.balanceOf(address(gav)), initialWisdomBalanceGav);
 
         assertEq(wisdomCurrency.balanceOf(address(bob)), 0 ether);
         assertEq(usdc.balanceOf(address(bob)), 0 ether);
