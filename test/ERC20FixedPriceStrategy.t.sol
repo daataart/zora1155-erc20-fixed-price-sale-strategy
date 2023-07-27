@@ -95,7 +95,7 @@ contract TestERC20FixedPriceSaleStrategy is Test {
                 ERC20FixedPriceSaleStrategy.ERC20SalesConfig({
                     maxTokensPerAddress: 100,
                     fundsRecipient: alice,
-                    price: 1 ether,
+                    pricePerToken: 1 ether,
                     currency: wisdomCurrency
                 })
             )
@@ -168,7 +168,7 @@ contract TestERC20FixedPriceSaleStrategy is Test {
                 ERC20FixedPriceSaleStrategy.ERC20SalesConfig({
                     maxTokensPerAddress: 100,
                     fundsRecipient: alice,
-                    price: 1 ether,
+                    pricePerToken: 1 ether,
                     currency: wisdomCurrency
                 })
             )
@@ -184,8 +184,6 @@ contract TestERC20FixedPriceSaleStrategy is Test {
     }
 
     function test_SaleEnd() external {
-        address payable alice = payable(address(0x999));
-
         // create a new zora collection from the factory
 
         vm.startPrank(alice);
@@ -230,7 +228,7 @@ contract TestERC20FixedPriceSaleStrategy is Test {
                 ERC20FixedPriceSaleStrategy.ERC20SalesConfig({
                     maxTokensPerAddress: 100,
                     fundsRecipient: alice,
-                    price: 1 ether,
+                    pricePerToken: 1 ether,
                     currency: wisdomCurrency
                 })
             )
@@ -238,7 +236,6 @@ contract TestERC20FixedPriceSaleStrategy is Test {
 
         vm.stopPrank();
 
-        address bob = address(322);
         vm.deal(bob, 20 ether);
         vm.expectRevert(abi.encodeWithSignature("SaleEnded()"));
         vm.prank(bob);
@@ -246,7 +243,6 @@ contract TestERC20FixedPriceSaleStrategy is Test {
     }
 
     function test_MaxTokensPerAddress() external {
-        address payable alice = payable(address(0x999));
         // create a new zora collection from the factory
 
         vm.startPrank(alice);
@@ -291,7 +287,7 @@ contract TestERC20FixedPriceSaleStrategy is Test {
                 ERC20FixedPriceSaleStrategy.ERC20SalesConfig({
                     maxTokensPerAddress: 1,
                     fundsRecipient: alice,
-                    price: 1 ether,
+                    pricePerToken: 1 ether,
                     currency: wisdomCurrency
                 })
             )
@@ -301,7 +297,6 @@ contract TestERC20FixedPriceSaleStrategy is Test {
 
         vm.warp(0.5 days);
 
-        address bob = address(322);
         vm.deal(bob, 20 ether);
         deal(address(wisdomCurrency), bob, 1 ether);
 
@@ -395,7 +390,7 @@ contract TestERC20FixedPriceSaleStrategy is Test {
                 ERC20FixedPriceSaleStrategy.ERC20SalesConfig({
                     maxTokensPerAddress: 100,
                     fundsRecipient: alice,
-                    price: 1 ether,
+                    pricePerToken: 1 ether,
                     currency: wisdomCurrency
                 })
             )
@@ -410,7 +405,7 @@ contract TestERC20FixedPriceSaleStrategy is Test {
                 ERC20FixedPriceSaleStrategy.ERC20SalesConfig({
                     maxTokensPerAddress: 100,
                     fundsRecipient: alice,
-                    price: 1 ether,
+                    pricePerToken: 1 ether,
                     currency: usdc
                 })
             )
@@ -532,7 +527,7 @@ contract TestERC20FixedPriceSaleStrategy is Test {
                 ERC20FixedPriceSaleStrategy.ERC20SalesConfig({
                     maxTokensPerAddress: 100,
                     fundsRecipient: alice,
-                    price: 1 ether,
+                    pricePerToken: 1 ether,
                     currency: wisdomCurrency
                 })
             )
@@ -547,7 +542,7 @@ contract TestERC20FixedPriceSaleStrategy is Test {
                 ERC20FixedPriceSaleStrategy.ERC20SalesConfig({
                     maxTokensPerAddress: 100,
                     fundsRecipient: alice,
-                    price: 1 ether,
+                    pricePerToken: 1 ether,
                     currency: usdc
                 })
             )
@@ -652,7 +647,7 @@ contract TestERC20FixedPriceSaleStrategy is Test {
                 ERC20FixedPriceSaleStrategy.ERC20SalesConfig({
                     maxTokensPerAddress: 100,
                     fundsRecipient: alice,
-                    price: 1 ether,
+                    pricePerToken: 1 ether,
                     currency: wisdomCurrency
                 })
             )
@@ -666,7 +661,7 @@ contract TestERC20FixedPriceSaleStrategy is Test {
                 ERC20FixedPriceSaleStrategy.ERC20SalesConfig({
                     maxTokensPerAddress: 100,
                     fundsRecipient: gav,
-                    price: 1 ether,
+                    pricePerToken: 1 ether,
                     currency: usdc
                 })
             )
@@ -700,9 +695,15 @@ contract TestERC20FixedPriceSaleStrategy is Test {
         assertEq(secondTokenContract.balanceOf(bob, secondTokenId), 1);
     }
 
-    function test_CostAmountsMuliplyCorrectly(uint64 quantity, uint96 price) public {
-        vm.assume(quantity < 10000000);
-        vm.assume(price < 10000 ether);
+    function test_CostAmountsMuliplyCorrectly(uint64 quantity, uint96 pricePerToken) public {
+        vm.assume(quantity > 0);
+        uint96 total;
+        assembly ("memory-safe") {
+            total := mul(pricePerToken, quantity)
+        }
+        emit log_named_uint("pricePerToken", pricePerToken);
+        emit log_named_uint("total / quantity", total / quantity);
+        vm.assume(pricePerToken == total / quantity);
 
         vm.startPrank(alice);
         bytes[] memory actions = new bytes[](0);
@@ -740,7 +741,7 @@ contract TestERC20FixedPriceSaleStrategy is Test {
                 ERC20FixedPriceSaleStrategy.ERC20SalesConfig({
                     maxTokensPerAddress: type(uint64).max,
                     fundsRecipient: alice,
-                    price: price,
+                    pricePerToken: pricePerToken,
                     currency: wisdomCurrency
                 })
             )
@@ -749,10 +750,10 @@ contract TestERC20FixedPriceSaleStrategy is Test {
         vm.stopPrank();
 
         vm.startPrank(bob);
-        deal(address(wisdomCurrency), bob, quantity * price);
+        deal(address(wisdomCurrency), bob, quantity * pricePerToken);
         deal(bob, quantity * MINT_FEE);
 
-        wisdomCurrency.approve(address(wrapperStrategy), quantity * price);
+        wisdomCurrency.approve(address(wrapperStrategy), quantity * pricePerToken);
         // bob mints from the tokenContract
         // the mint function takes the following parameters:
         // to: The address of the recipient of the token.
@@ -763,7 +764,93 @@ contract TestERC20FixedPriceSaleStrategy is Test {
         tokenContract.mint{value: quantity * MINT_FEE}(wrapperStrategy, newTokenId, quantity, abi.encode(bob));
 
         assertEq(tokenContract.balanceOf(bob, 1), quantity);
-        assertEq(wisdomCurrency.balanceOf(address(alice)), quantity * price);
+        assertEq(wisdomCurrency.balanceOf(address(alice)), quantity * pricePerToken);
         assertEq(wisdomCurrency.balanceOf(address(bob)), 0 ether);
+    }
+
+    function test_ResetSale() external {
+        vm.startPrank(alice);
+        bytes[] memory actions = new bytes[](0);
+        address _tokenContract = factory.createContract(
+            "test", "test", ICreatorRoyaltiesControl.RoyaltyConfiguration(0, 0, address(0)), alice, actions
+        );
+        IZoraCreator1155 tokenContract = IZoraCreator1155(_tokenContract);
+        // set up a new token
+        uint256 newTokenId = tokenContract.setupNewToken("", 100);
+
+        // give the wrappedStrategy and the wrapperStrategy the minter role
+        // this is the original Strategy from Zora
+        tokenContract.addPermission(1, address(wrappedStrategy), tokenContract.PERMISSION_BIT_MINTER());
+        // this is the new Strategy
+        tokenContract.addPermission(1, address(wrapperStrategy), tokenContract.PERMISSION_BIT_MINTER());
+        // vm.expectEmit(false, false, false, false);
+
+        // call the wrapped strategy to set up the sale
+        tokenContract.callSale(
+            newTokenId,
+            wrappedStrategy,
+            abi.encodeWithSelector(
+                ZoraCreatorFixedPriceSaleStrategy.setSale.selector,
+                newTokenId,
+                ZoraCreatorFixedPriceSaleStrategy.SalesConfig({
+                    pricePerToken: 1 ether,
+                    saleStart: 0,
+                    saleEnd: type(uint64).max,
+                    maxTokensPerAddress: 0,
+                    fundsRecipient: address(0)
+                })
+            )
+        );
+        // vm.expectEmit(false, false, false, false);
+
+        tokenContract.callSale(
+            newTokenId,
+            wrapperStrategy,
+            abi.encodeWithSelector(
+                ERC20FixedPriceSaleStrategy.setSale.selector,
+                newTokenId,
+                ERC20FixedPriceSaleStrategy.ERC20SalesConfig({
+                    maxTokensPerAddress: 100,
+                    fundsRecipient: alice,
+                    pricePerToken: 1 ether,
+                    currency: wisdomCurrency
+                })
+            )
+        );
+
+        tokenContract.callSale(
+            newTokenId,
+            wrapperStrategy,
+            abi.encodeWithSelector(ERC20FixedPriceSaleStrategy.resetSale.selector, newTokenId)
+        );
+
+        vm.stopPrank();
+
+        // Check that the wrapperStrategy sale is reset
+        ERC20FixedPriceSaleStrategy.ERC20SalesConfig memory sale =
+            wrapperStrategy.sale(address(tokenContract), newTokenId);
+        assertEq(sale.pricePerToken, 0);
+        assertEq(sale.maxTokensPerAddress, 0);
+        assertEq(sale.fundsRecipient, address(0));
+
+        // Check that the original ETH denominated sale strategy is still in place
+        ZoraCreatorFixedPriceSaleStrategy.SalesConfig memory ethSale =
+            wrappedStrategy.sale(address(tokenContract), newTokenId);
+        assertEq(ethSale.pricePerToken, 1 ether);
+        assertEq(ethSale.saleStart, 0);
+        assertEq(ethSale.saleEnd, type(uint64).max);
+        assertEq(ethSale.maxTokensPerAddress, 0);
+        assertEq(ethSale.fundsRecipient, address(0));
+
+        // Test that you get a revert when you try to mint a token for an ERC20
+        vm.startPrank(bob);
+        deal(address(wisdomCurrency), bob, 1 ether);
+        deal(bob, 1 ether);
+
+        wisdomCurrency.approve(address(wrapperStrategy), 1 ether);
+
+        vm.expectRevert();
+        tokenContract.mint{value: 0.1 ether}(wrapperStrategy, 1, 1, abi.encode(bob));
+        vm.stopPrank();
     }
 }

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.13;
 
-import "openzeppelin-contracts/contracts/security/Pausable.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "zora-1155-contracts/interfaces/IZoraCreator1155.sol";
 import "zora-1155-contracts/minters/fixed-price/ZoraCreatorFixedPriceSaleStrategy.sol";
@@ -13,19 +12,20 @@ import "zora-1155-contracts/minters/utils/LimitedMintPerAddress.sol";
 /// This contract is intended to wrap a ZoraCreatorFixedPriceSaleStrategy contract. It will use the wrapped
 /// contract's sales configuration for start/end times, max tokens per address, and funds recipient, but will
 /// use the prices set in this contract for the price per token.
-contract ERC20FixedPriceSaleStrategy is SaleStrategy, LimitedMintPerAddress, Pausable {
+contract ERC20FixedPriceSaleStrategy is SaleStrategy, LimitedMintPerAddress {
     struct ERC20SalesConfig {
         uint64 maxTokensPerAddress;
         address fundsRecipient;
-        uint256 price;
+        uint256 pricePerToken;
         IERC20 currency;
     }
 
     error SaleEnded();
     error SaleHasNotStarted();
+    error InvalidFundsRecipient();
 
     event ERC20SaleSet(address tokenContract, uint256 tokenId, ERC20SalesConfig config);
-    event ERC20Purchase(address tokenContract, uint256 tokenId, uint256 price, address buyer);
+    event ERC20Purchase(address tokenContract, uint256 tokenId, uint256 pricePerToken, address buyer);
 
     /// target -> tokenId -> settings
     mapping(address => mapping(uint256 => ERC20SalesConfig)) internal _salesConfigs;
@@ -43,19 +43,21 @@ contract ERC20FixedPriceSaleStrategy is SaleStrategy, LimitedMintPerAddress, Pau
     }
 
     function contractURI() external pure returns (string memory) {
-        return "neknel.world";
+        return "https://github.com/daataart/zora1155-erc20-fixed-price-sale-strategy";
     }
 
     function contractVersion() external pure returns (string memory) {
         return "1.0.0";
     }
 
-    /// @notice allows the owner of the contract to set the prices of multiple tokens, for multiple collections
-    /// @notice setting a price to 0 will disable purchases of that token
+    /// @notice allows the owner of the contract to set sale config for a given token
     /// @param tokenId the tokenId
     /// @param salesConfig the salesConfig
-    function setSale(uint256 tokenId, ERC20SalesConfig memory salesConfig) external whenNotPaused {
+    function setSale(uint256 tokenId, ERC20SalesConfig memory salesConfig) external {
         _salesConfigs[msg.sender][tokenId] = salesConfig;
+        if (salesConfig.fundsRecipient == address(0)) {
+            revert InvalidFundsRecipient();
+        }
         emit ERC20SaleSet(msg.sender, tokenId, salesConfig);
     }
 
@@ -72,8 +74,7 @@ contract ERC20FixedPriceSaleStrategy is SaleStrategy, LimitedMintPerAddress, Pau
         ZoraCreatorFixedPriceSaleStrategy.SalesConfig memory externalConfig = wrappedStrategy.sale(msg.sender, tokenId);
         ERC20SalesConfig memory internalConfig = _salesConfigs[msg.sender][tokenId];
 
-        // If sales config does not exist this first check will always fail.
-
+        // If a sales config does not exist on the wrapped strategy, this check will fail
         // Check sale end
         if (block.timestamp > externalConfig.saleEnd) {
             revert SaleEnded();
@@ -95,9 +96,10 @@ contract ERC20FixedPriceSaleStrategy is SaleStrategy, LimitedMintPerAddress, Pau
         // Mint command
         commands.mint(mintTo, tokenId, quantity);
 
-        emit ERC20Purchase(msg.sender, tokenId, internalConfig.price, mintTo);
+        emit ERC20Purchase(msg.sender, tokenId, internalConfig.pricePerToken, mintTo);
 
-        internalConfig.currency.transferFrom(mintTo, recipient, internalConfig.price * quantity);
+        // If an ERC20 sales config doesn't exist, this will fail
+        internalConfig.currency.transferFrom(mintTo, recipient, internalConfig.pricePerToken * quantity);
     }
 
     /// @notice Deletes the sale config for a given token
