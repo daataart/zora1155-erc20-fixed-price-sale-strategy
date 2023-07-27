@@ -96,10 +96,10 @@ contract ERC20FixedPriceSaleStrategy is SaleStrategy, LimitedMintPerAddress {
         // Mint command
         commands.mint(mintTo, tokenId, quantity);
 
-        emit ERC20Purchase(msg.sender, tokenId, internalConfig.pricePerToken, mintTo);
-
         // If an ERC20 sales config doesn't exist, this will fail
         internalConfig.currency.transferFrom(mintTo, recipient, internalConfig.pricePerToken * quantity);
+
+        emit ERC20Purchase(msg.sender, tokenId, internalConfig.pricePerToken, mintTo);
     }
 
     /// @notice Deletes the sale config for a given token
