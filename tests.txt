@@ -21,6 +21,9 @@ test multiple contract owners using the same strategy
 test that zero address as fundsRecipient causes a revert
 
 test that the zora fee is deducted correctly
+- check the treasury balance has increased by the correct amount, and that the correct amount has
+left  your wallet.
+
 i can set the limit per address to 0 on the eth side, stopping mints for eth, but still allowing mints for erc20s 
 
 we should test specifically for buying via the wrapper strat where there's a salesconfig for the tokenId on the wrapped strat but not on the wrapper, and vice versa
