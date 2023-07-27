@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.13;
 
-import "openzeppelin-contracts/contracts/access/Ownable.sol";
 import "openzeppelin-contracts/contracts/security/Pausable.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "zora-1155-contracts/interfaces/IZoraCreator1155.sol";
@@ -14,7 +13,7 @@ import "zora-1155-contracts/minters/utils/LimitedMintPerAddress.sol";
 /// This contract is intended to wrap a ZoraCreatorFixedPriceSaleStrategy contract. It will use the wrapped
 /// contract's sales configuration for start/end times, max tokens per address, and funds recipient, but will
 /// use the prices set in this contract for the price per token.
-contract ERC20FixedPriceSaleStrategy is SaleStrategy, LimitedMintPerAddress, Ownable, Pausable {
+contract ERC20FixedPriceSaleStrategy is SaleStrategy, LimitedMintPerAddress, Pausable {
     struct ERC20SalesConfig {
         uint64 maxTokensPerAddress;
         address fundsRecipient;
@@ -90,7 +89,7 @@ contract ERC20FixedPriceSaleStrategy is SaleStrategy, LimitedMintPerAddress, Own
             _requireMintNotOverLimitAndUpdate(internalConfig.maxTokensPerAddress, quantity, msg.sender, tokenId, mintTo);
         }
 
-        address recipient = internalConfig.fundsRecipient == address(0) ? owner() : internalConfig.fundsRecipient;
+        address recipient = internalConfig.fundsRecipient;
         commands.setSize(1);
 
         // Mint command
