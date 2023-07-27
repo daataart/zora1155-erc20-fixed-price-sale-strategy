@@ -2,21 +2,20 @@
 if i create a zora1155 (address), can i 
 set up a sale using one erc20 on address/[1]
 and set up another sale using a second erc20 (say USDC) on address/[2]
-and when other users buy address/[1] or address/[2], they get deducted the correct erc20
+and when other users buy address/[1] or address/[2], they get deducted the correct erc20 [DONE]
 
 
+two erc20s, one for a address[1]/[1] and one for address[2]/[1] two different 1155 contracts [DONE]
 
-two erc20s, one for a address[1]/[1] and one for address[2]/[1] two different 1155 contracts
-
-test funds recipient for mulitple sales, across multiple 1155 contracts and tokenIds
+test funds recipient for mulitple sales, across multiple 1155 contracts and tokenIds [DONE]
 
 test_MintedPerRecipientGetter
 test_ResetSale
 test_fixedPriceSaleSupportsInterface
 
-test multiple contract owners using the same strategy
+test multiple contract owners using the same strategy 
 
-i can set the limit per address to 0 on the eth side, stopping mints for eth, but still allowing mints for erc20s
+i can set the limit per address to 0 on the eth side, stopping mints for eth, but still allowing mints for erc20s 
 
 bob's balance is reduced by token price multiplied by number minted
 alice's balance is increased by token price multiplied by number minted (minus zora fee?)

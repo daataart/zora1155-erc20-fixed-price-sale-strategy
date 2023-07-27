@@ -786,6 +786,83 @@ contract TestERC20FixedPriceSaleStrategy is Test {
         assertEq(secondTokenContract.balanceOf(bob, secondTokenId), 1);
     }
 
+    function test_CostAmountsMuliplyCorrectly() public {
+
+        vm.startPrank(alice);
+        bytes[] memory actions = new bytes[](0);
+        address _tokenContract = factory.createContract("test", "test", ICreatorRoyaltiesControl.RoyaltyConfiguration(0, 0, address(0)), alice, actions);
+        IZoraCreator1155 tokenContract = IZoraCreator1155(_tokenContract);
+        uint256 newTokenId = tokenContract.setupNewToken("", 100);
+        tokenContract.addPermission(1, address(wrappedStrategy), tokenContract.PERMISSION_BIT_MINTER());
+        tokenContract.addPermission(1, address(wrapperStrategy), tokenContract.PERMISSION_BIT_MINTER());
+
+        ZoraCreatorFixedPriceSaleStrategy.SalesConfig memory salesConfig = ZoraCreatorFixedPriceSaleStrategy.SalesConfig({
+            saleStart: 0,
+            saleEnd: 1790219309,
+            maxTokensPerAddress: 100,
+            pricePerToken: 0.5 ether,
+            fundsRecipient: address(0)
+        });
+
+        // call the wrapped strategy to set up the sale
+        tokenContract.callSale(
+            newTokenId,
+            wrappedStrategy,
+            abi.encodeWithSelector(
+                ZoraCreatorFixedPriceSaleStrategy.setSale.selector,
+                newTokenId,
+                ZoraCreatorFixedPriceSaleStrategy.SalesConfig({
+                    pricePerToken: 1 ether,
+                    saleStart: 0,
+                    saleEnd: type(uint64).max,
+                    maxTokensPerAddress: 0,
+                    fundsRecipient: address(0)
+                })
+            )
+        );
+
+        ERC20FixedPriceSaleStrategy.ERC20SalesConfig memory erc20salesconfig = ERC20FixedPriceSaleStrategy.ERC20SalesConfig({
+            maxTokensPerAddress: 100,
+            fundsRecipient: alice,
+            price: 1 ether,
+            currency: wisdomCurrency
+        });
+
+        tokenContract.callSale(
+            newTokenId,
+            wrapperStrategy,
+            abi.encodeWithSelector(
+                ERC20FixedPriceSaleStrategy.setSale.selector,
+                newTokenId,
+                erc20salesconfig
+            )
+        );
+
+        vm.stopPrank();
+        
+        vm.startPrank(bob);
+        deal(address(wisdomCurrency), bob, 2 ether);
+        deal(bob, 1 ether);
+
+        wisdomCurrency.approve(address(wrapperStrategy), 2 ether);
+        // bob mints from the tokenContract
+        // the mint function takes the following parameters:
+        // to: The address of the recipient of the token.
+        // tokenId: The ID of the token.
+        // amount: The amount of tokens to mint.
+        // data: The data to be passed to the token contract.
+        // Why is this value: 0.1 ether?
+        
+
+        tokenContract.mint{value: 0.1 ether}(wrapperStrategy, newTokenId, 2, abi.encode(bob));   
+
+        // Passes: he gets 2 NFTs
+        assertEq(tokenContract.balanceOf(bob, 1), 2);
+        // Fails: the balances seem to be incorrect
+        assertEq(wisdomCurrency.balanceOf(address(alice)), 2 ether);
+        assertEq(wisdomCurrency.balanceOf(address(bob)), 0 ether);
+    }
+
     
 
 }
