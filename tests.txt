@@ -9,6 +9,7 @@ alice's balance is increased by token price multiplied by number minted (minus z
 Check for overflow... [DONE]
 bob's balance is reduced by token price multiplied by number minted [DONE]
 test_ResetSale [DONE]
+test that the zora fee is deducted correctly for ETH sales[DONE]
 
 
 
@@ -19,10 +20,8 @@ test_fixedPriceSaleSupportsInterface
 
 test multiple contract owners using the same strategy 
 test that zero address as fundsRecipient causes a revert
+test that the zora fee is deducted correctly for $WISDOM sales
 
-test that the zora fee is deducted correctly
-- check the treasury balance has increased by the correct amount, and that the correct amount has
-left  your wallet.
 
 i can set the limit per address to 0 on the eth side, stopping mints for eth, but still allowing mints for erc20s 
 
