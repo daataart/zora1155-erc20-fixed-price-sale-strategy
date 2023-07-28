@@ -91,7 +91,7 @@ contract ERC20FixedPriceSaleStrategy is SaleStrategy, LimitedMintPerAddress {
         }
 
         // Check value sent is 0
-        if (ethValueSent) {
+        if (ethValueSent > 0) {
             revert WrongValueSent();
         }
 
