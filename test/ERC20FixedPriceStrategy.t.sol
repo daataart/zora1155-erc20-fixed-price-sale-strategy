@@ -914,11 +914,15 @@ contract TestERC20FixedPriceSaleStrategy is Test {
 
         wisdomCurrency.approve(address(wrapperStrategy), 1 ether);
         // tokenContract.mint{value: 0.1 ether}(wrapperStrategy, 1, 1, abi.encode(bob));
+        // Mint for ETH using the wrapped strategy
         tokenContract.mint{value: 0.1 ether + ZORA_MINT_FEE}(wrappedStrategy, 1, 1, abi.encode(bob));
         // assertEq(wisdomCurrency.balanceOf(address(alice)), 1 ether);
         // assertEq(wisdomCurrency.balanceOf(address(bob)), 0 ether);
+        // Bob gets a token
         assertEq(tokenContract.balanceOf(bob, 1), 1);
+        // Zora gets a fee
         assertEq(address(zoraFeesTreasury).balance, initialTreasureBalance + ZORA_MINT_FEE);
+        // Bob pays the fee
         assertEq(address(bob).balance, bobEthBalance - 0.1 ether - ZORA_MINT_FEE);
     }
 }
