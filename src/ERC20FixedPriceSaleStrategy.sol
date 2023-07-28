@@ -22,6 +22,7 @@ contract ERC20FixedPriceSaleStrategy is SaleStrategy, LimitedMintPerAddress {
 
     error SaleEnded();
     error SaleHasNotStarted();
+    error WrongValueSent();
     error InvalidFundsRecipient();
 
     event ERC20SaleSet(address tokenContract, uint256 tokenId, ERC20SalesConfig config);
@@ -64,11 +65,15 @@ contract ERC20FixedPriceSaleStrategy is SaleStrategy, LimitedMintPerAddress {
     /// @notice Compiles and returns the commands needed to mint a token using this sales strategy
     /// @param tokenId The token ID to mint
     /// @param quantity The quantity of tokens to mint
+    /// @param ethValueSent The amount of ETH sent with the transaction
     /// @param minterArguments The arguments passed to the minter, which should be the address to mint to
-    function requestMint(address, uint256 tokenId, uint256 quantity, uint256, bytes calldata minterArguments)
-        external
-        returns (ICreatorCommands.CommandSet memory commands)
-    {
+    function requestMint(
+        address,
+        uint256 tokenId,
+        uint256 quantity,
+        uint256 ethValueSent,
+        bytes calldata minterArguments
+    ) external returns (ICreatorCommands.CommandSet memory commands) {
         address mintTo = abi.decode(minterArguments, (address));
 
         ZoraCreatorFixedPriceSaleStrategy.SalesConfig memory externalConfig = wrappedStrategy.sale(msg.sender, tokenId);
@@ -83,6 +88,11 @@ contract ERC20FixedPriceSaleStrategy is SaleStrategy, LimitedMintPerAddress {
         // Check sale start
         if (block.timestamp < externalConfig.saleStart) {
             revert SaleHasNotStarted();
+        }
+
+        // Check value sent is 0
+        if (ethValueSent) {
+            revert WrongValueSent();
         }
 
         // Check minted per address limit
