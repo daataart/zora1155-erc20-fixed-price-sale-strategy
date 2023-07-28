@@ -10,6 +10,13 @@ Check for overflow... [DONE]
 bob's balance is reduced by token price multiplied by number minted [DONE]
 test_ResetSale [DONE]
 test that the zora fee is deducted correctly for ETH sales[DONE]
+i can set the limit per address to 0 on the eth side, stopping mints for eth, but still allowing mints for erc20s [DONE first test]
+test that zero address as fundsRecipient causes a revert [DONE]
+test that the zora fee is deducted correctly for $WISDOM sales [DONE]
+test specifically for buying on a strat with no active config [DONE] 
+and vice versa [DONE]
+test multiple contract owners using the same strategy  
+
 
 
 
@@ -18,13 +25,7 @@ test_MintedPerRecipientGetter
 test_fixedPriceSaleSupportsInterface
 
 
-test multiple contract owners using the same strategy 
-test that zero address as fundsRecipient causes a revert
-test that the zora fee is deducted correctly for $WISDOM sales
 
 
-i can set the limit per address to 0 on the eth side, stopping mints for eth, but still allowing mints for erc20s 
 
-we should test specifically for buying via the wrapper strat where there's a salesconfig for the tokenId on the wrapped strat but not on the wrapper, and vice versa
-both cases should revert, but for different reasons
 

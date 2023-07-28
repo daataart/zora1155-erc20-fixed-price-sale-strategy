@@ -116,7 +116,7 @@ contract TestERC20FixedPriceSaleStrategy is Test {
         // data: The data to be passed to the token contract.
         // Why is this value: 0.1 ether?
 
-        tokenContract.mint{value: 0.1 ether}(wrapperStrategy, 1, 1, abi.encode(bob));
+        tokenContract.mint{value: ZORA_MINT_FEE}(wrapperStrategy, 1, 1, abi.encode(bob));
 
         assertEq(wisdomCurrency.balanceOf(address(alice)), 1 ether);
         assertEq(wisdomCurrency.balanceOf(address(bob)), 0 ether);
@@ -239,7 +239,7 @@ contract TestERC20FixedPriceSaleStrategy is Test {
         vm.deal(bob, 20 ether);
         vm.expectRevert(abi.encodeWithSignature("SaleEnded()"));
         vm.prank(bob);
-        tokenContract.mint{value: 10 ether}(wrapperStrategy, newTokenId, 10, abi.encode(bob));
+        tokenContract.mint{value: ZORA_MINT_FEE * 10}(wrapperStrategy, newTokenId, 10, abi.encode(bob));
     }
 
     function test_MaxTokensPerAddress() external {
@@ -302,9 +302,8 @@ contract TestERC20FixedPriceSaleStrategy is Test {
 
         wisdomCurrency.approve(address(wrapperStrategy), 1 ether);
 
-        vm.prank(bob);
-
         vm.expectRevert(abi.encodeWithSelector(ILimitedMintPerAddress.UserExceedsMintLimit.selector, bob, 1, 6));
+        vm.prank(bob);
 
         // bob mints from the tokenContract
         // the mint function takes the following parameters:
@@ -313,7 +312,7 @@ contract TestERC20FixedPriceSaleStrategy is Test {
         // tokenId: The ID of the token.
         // amount: The amount of tokens to mint.
         // data: The data to be passed to the token contract.
-        tokenContract.mint{value: 6 ether}(wrapperStrategy, newTokenId, 6, abi.encode(bob));
+        tokenContract.mint{value: ZORA_MINT_FEE * 6}(wrapperStrategy, newTokenId, 6, abi.encode(bob));
     }
 
     function test_SaleForDifferentERC20s() external {
@@ -428,8 +427,8 @@ contract TestERC20FixedPriceSaleStrategy is Test {
         // amount: The amount of tokens to mint.
         // data: The data to be passed to the token contract.
 
-        tokenContract.mint{value: 0.1 ether}(wrapperStrategy, 1, 1, abi.encode(bob));
-        tokenContract.mint{value: 0.1 ether}(wrapperStrategy, 2, 1, abi.encode(bob));
+        tokenContract.mint{value: ZORA_MINT_FEE}(wrapperStrategy, 1, 1, abi.encode(bob));
+        tokenContract.mint{value: ZORA_MINT_FEE}(wrapperStrategy, 2, 1, abi.encode(bob));
 
         assertEq(wisdomCurrency.balanceOf(address(alice)), initialWisdomBalance + 1 ether);
         assertEq(usdc.balanceOf(address(alice)), initialUsdcBalance + 1 ether);
@@ -558,8 +557,8 @@ contract TestERC20FixedPriceSaleStrategy is Test {
         wisdomCurrency.approve(address(wrapperStrategy), 1 ether);
         usdc.approve(address(wrapperStrategy), 1 ether);
 
-        firstTokenContract.mint{value: 0.1 ether}(wrapperStrategy, firstTokenId, 1, abi.encode(bob));
-        secondTokenContract.mint{value: 0.1 ether}(wrapperStrategy, secondTokenId, 1, abi.encode(bob));
+        firstTokenContract.mint{value: ZORA_MINT_FEE}(wrapperStrategy, firstTokenId, 1, abi.encode(bob));
+        secondTokenContract.mint{value: ZORA_MINT_FEE}(wrapperStrategy, secondTokenId, 1, abi.encode(bob));
 
         assertEq(wisdomCurrency.balanceOf(address(alice)), initialWisdomBalance + 1 ether);
         assertEq(usdc.balanceOf(address(alice)), initialUsdcBalance + 1 ether);
@@ -677,8 +676,8 @@ contract TestERC20FixedPriceSaleStrategy is Test {
         wisdomCurrency.approve(address(wrapperStrategy), 1 ether);
         usdc.approve(address(wrapperStrategy), 1 ether);
 
-        firstTokenContract.mint{value: 0.1 ether}(wrapperStrategy, firstTokenId, 1, abi.encode(bob));
-        secondTokenContract.mint{value: 0.1 ether}(wrapperStrategy, secondTokenId, 1, abi.encode(bob));
+        firstTokenContract.mint{value: ZORA_MINT_FEE}(wrapperStrategy, firstTokenId, 1, abi.encode(bob));
+        secondTokenContract.mint{value: ZORA_MINT_FEE}(wrapperStrategy, secondTokenId, 1, abi.encode(bob));
 
         // Alice only gained $wisdomCurrency
         assertEq(wisdomCurrency.balanceOf(address(alice)), initialWisdomBalanceAlice + 1 ether);
@@ -1041,6 +1040,72 @@ contract TestERC20FixedPriceSaleStrategy is Test {
             )
         );
 
+        vm.expectRevert();
+
+        tokenContract.callSale(
+            newTokenId,
+            wrapperStrategy,
+            abi.encodeWithSelector(
+                ERC20FixedPriceSaleStrategy.setSale.selector,
+                newTokenId,
+                ERC20FixedPriceSaleStrategy.ERC20SalesConfig({
+                    maxTokensPerAddress: 100,
+                    fundsRecipient: address(0),
+                    pricePerToken: 1 ether,
+                    currency: wisdomCurrency
+                })
+            )
+        );
+
+        vm.stopPrank();
+
+        // vm.startPrank(bob);
+        // deal(address(wisdomCurrency), bob, 1 ether);
+        // deal(bob, 1 ether);
+        // uint256 bobEthBalance = address(bob).balance;
+
+        // wisdomCurrency.approve(address(wrapperStrategy), 1 ether);
+        // // Since the funds recipient is address(0), the mint should fail
+        // vm.expectRevert(abi.encodeWithSignature("InvalidFundsRecipient()"));
+        // tokenContract.mint{value: ZORA_MINT_FEE}(wrapperStrategy, newTokenId, 1, abi.encode(bob));
+    }
+
+    function test_MintingOnWrappedWithNoConfig() public {
+        uint256 aliceBalance = wisdomCurrency.balanceOf(alice);
+        uint256 bobBalance = wisdomCurrency.balanceOf(bob);
+        uint256 initialTreasureBalance = address(zoraFeesTreasury).balance;
+
+        vm.startPrank(alice);
+
+        bytes[] memory actions = new bytes[](0);
+
+        address _tokenContract = factory.createContract(
+            "test", "test", ICreatorRoyaltiesControl.RoyaltyConfiguration(0, 0, address(0)), alice, actions
+        );
+
+        IZoraCreator1155 tokenContract = IZoraCreator1155(_tokenContract);
+
+        uint256 newTokenId = tokenContract.setupNewToken("", 100);
+
+        tokenContract.addPermission(1, address(wrappedStrategy), tokenContract.PERMISSION_BIT_MINTER());
+        tokenContract.addPermission(1, address(wrapperStrategy), tokenContract.PERMISSION_BIT_MINTER());
+
+        // tokenContract.callSale(
+        //     newTokenId,
+        //     wrappedStrategy,
+        //     abi.encodeWithSelector(
+        //         ZoraCreatorFixedPriceSaleStrategy.setSale.selector,
+        //         newTokenId,
+        //         ZoraCreatorFixedPriceSaleStrategy.SalesConfig({
+        //             pricePerToken: 0.1 ether,
+        //             saleStart: 0,
+        //             saleEnd: type(uint64).max,
+        //             maxTokensPerAddress: 1,
+        //             fundsRecipient: address(0)
+        //         })
+        //     )
+        // );
+
         tokenContract.callSale(
             newTokenId,
             wrapperStrategy,
@@ -1062,21 +1127,206 @@ contract TestERC20FixedPriceSaleStrategy is Test {
         deal(address(wisdomCurrency), bob, 1 ether);
         deal(bob, 1 ether);
         uint256 bobEthBalance = address(bob).balance;
+        wisdomCurrency.approve(address(wrappedStrategy), 1 ether);
+        vm.expectRevert(abi.encodeWithSignature("SaleEnded()"));
+        tokenContract.mint{value: ZORA_MINT_FEE}(wrappedStrategy, newTokenId, 1, abi.encode(bob));
+    }
 
+    function test_MintingOnWrapperWithNoConfig() public {
+        uint256 aliceBalance = wisdomCurrency.balanceOf(alice);
+        uint256 bobBalance = wisdomCurrency.balanceOf(bob);
+        uint256 initialTreasureBalance = address(zoraFeesTreasury).balance;
+
+        vm.startPrank(alice);
+
+        bytes[] memory actions = new bytes[](0);
+
+        address _tokenContract = factory.createContract(
+            "test", "test", ICreatorRoyaltiesControl.RoyaltyConfiguration(0, 0, address(0)), alice, actions
+        );
+
+        IZoraCreator1155 tokenContract = IZoraCreator1155(_tokenContract);
+
+        uint256 newTokenId = tokenContract.setupNewToken("", 100);
+
+        tokenContract.addPermission(1, address(wrappedStrategy), tokenContract.PERMISSION_BIT_MINTER());
+        tokenContract.addPermission(1, address(wrapperStrategy), tokenContract.PERMISSION_BIT_MINTER());
+
+        tokenContract.callSale(
+            newTokenId,
+            wrappedStrategy,
+            abi.encodeWithSelector(
+                ZoraCreatorFixedPriceSaleStrategy.setSale.selector,
+                newTokenId,
+                ZoraCreatorFixedPriceSaleStrategy.SalesConfig({
+                    pricePerToken: 0.1 ether,
+                    saleStart: 0,
+                    saleEnd: type(uint64).max,
+                    maxTokensPerAddress: 1,
+                    fundsRecipient: alice
+                })
+            )
+        );
+
+        // tokenContract.callSale(
+        //     newTokenId,
+        //     wrapperStrategy,
+        //     abi.encodeWithSelector(
+        //         ERC20FixedPriceSaleStrategy.setSale.selector,
+        //         newTokenId,
+        //         ERC20FixedPriceSaleStrategy.ERC20SalesConfig({
+        //             maxTokensPerAddress: 100,
+        //             fundsRecipient: alice,
+        //             pricePerToken: 1 ether,
+        //             currency: wisdomCurrency
+        //         })
+        //     )
+        // );
+
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        deal(address(wisdomCurrency), bob, 1 ether);
+        deal(bob, 1 ether);
+        uint256 bobEthBalance = address(bob).balance;
         wisdomCurrency.approve(address(wrapperStrategy), 1 ether);
-        // tokenContract.mint{value: 0.1 ether}(wrapperStrategy, 1, 1, abi.encode(bob));
-        // Mint for ETH using the wrapped strategy
-        tokenContract.mint{value: 0.1 ether + ZORA_MINT_FEE}(wrappedStrategy, newTokenId, 1, abi.encode(bob));
-        // assertEq(wisdomCurrency.balanceOf(address(alice)), 1 ether);
-        // assertEq(wisdomCurrency.balanceOf(address(bob)), 0 ether);
+        vm.expectRevert();
+        tokenContract.mint{value: ZORA_MINT_FEE}(wrapperStrategy, newTokenId, 1, abi.encode(bob));
+    }
 
-        // Bob gets a token
+    function test_TwoContractsUsingSameStrat() public {
+        vm.startPrank(alice);
+        //A dynamic array of bytes named actions is created with a size of 0. This array is used to store actions, but in this case, it is initialized as an empty array.
+        bytes[] memory actions = new bytes[](0);
+        // The createContract function is called on the factory contract, which creates a new Zora collection. The function takes the following parameters:
+        // name: The name of the collection.
+        // symbol: The symbol of the collection.
+        // royalty: The royalty configuration of the collection.
+        // creator: The address of the creator of the collection.
+        // actions: The actions that are to be performed on the collection.
+        address _tokenContract = factory.createContract(
+            "test", "test", ICreatorRoyaltiesControl.RoyaltyConfiguration(0, 0, address(0)), alice, actions
+        );
+        // The address of the new collection (_tokenContract) is assigned to the variable tokenContract.
+        IZoraCreator1155 tokenContract = IZoraCreator1155(_tokenContract);
+        // set up a new token, setupNewToken takes two parameters:
+        // tokenURI: The URI of the token.
+        // supply: The supply of the token.
+        uint256 newTokenId = tokenContract.setupNewToken("", 100);
+
+        // give the wrappedStrategy and the wrapperStrategy the minter role
+        // this is the original Strategy from Zora
+        tokenContract.addPermission(1, address(wrappedStrategy), tokenContract.PERMISSION_BIT_MINTER());
+        // this is the new Strategy
+        tokenContract.addPermission(1, address(wrapperStrategy), tokenContract.PERMISSION_BIT_MINTER());
+
+        // call the wrapped strategy to set up the sale
+        tokenContract.callSale(
+            newTokenId,
+            wrappedStrategy,
+            abi.encodeWithSelector(
+                ZoraCreatorFixedPriceSaleStrategy.setSale.selector,
+                newTokenId,
+                ZoraCreatorFixedPriceSaleStrategy.SalesConfig({
+                    pricePerToken: 1 ether,
+                    saleStart: 0,
+                    saleEnd: type(uint64).max,
+                    maxTokensPerAddress: 0,
+                    fundsRecipient: address(0)
+                })
+            )
+        );
+
+        // call the wrapper strategy to set up the sale
+        tokenContract.callSale(
+            newTokenId,
+            wrapperStrategy,
+            abi.encodeWithSelector(
+                ERC20FixedPriceSaleStrategy.setSale.selector,
+                newTokenId,
+                ERC20FixedPriceSaleStrategy.ERC20SalesConfig({
+                    maxTokensPerAddress: 100,
+                    fundsRecipient: alice,
+                    pricePerToken: 1 ether,
+                    currency: wisdomCurrency
+                })
+            )
+        );
+
+        vm.stopPrank();
+
+        vm.startPrank(gav);
+        //A dynamic array of bytes named actions is created with a size of 0. This array is used to store actions, but in this case, it is initialized as an empty array.
+        bytes[] memory secondActions = new bytes[](0);
+        // The createContract function is called on the factory contract, which creates a new Zora collection. The function takes the following parameters:
+        // name: The name of the collection.
+        // symbol: The symbol of the collection.
+        // royalty: The royalty configuration of the collection.
+        // creator: The address of the creator of the collection.
+        // actions: The actions that are to be performed on the collection.
+        address _secondTokenContract = factory.createContract(
+            "test", "test", ICreatorRoyaltiesControl.RoyaltyConfiguration(0, 0, address(0)), gav, secondActions
+        );
+        // The address of the new collection (_tokenContract) is assigned to the variable tokenContract.
+        IZoraCreator1155 secondTokenContract = IZoraCreator1155(_secondTokenContract);
+        // set up a new token, setupNewToken takes two parameters:
+        // tokenURI: The URI of the token.
+        // supply: The supply of the token.
+        uint256 secondNewTokenId = secondTokenContract.setupNewToken("", 100);
+
+        // give the wrappedStrategy and the wrapperStrategy the minter role
+        // this is the original Strategy from Zora
+        secondTokenContract.addPermission(1, address(wrappedStrategy), secondTokenContract.PERMISSION_BIT_MINTER());
+        // this is the new Strategy
+        secondTokenContract.addPermission(1, address(wrapperStrategy), secondTokenContract.PERMISSION_BIT_MINTER());
+
+        // call the wrapped strategy to set up the sale
+        secondTokenContract.callSale(
+            secondNewTokenId,
+            wrappedStrategy,
+            abi.encodeWithSelector(
+                ZoraCreatorFixedPriceSaleStrategy.setSale.selector,
+                secondNewTokenId,
+                ZoraCreatorFixedPriceSaleStrategy.SalesConfig({
+                    pricePerToken: 1 ether,
+                    saleStart: 0,
+                    saleEnd: type(uint64).max,
+                    maxTokensPerAddress: 0,
+                    fundsRecipient: address(0)
+                })
+            )
+        );
+
+        // call the wrapper strategy to set up the sale
+        secondTokenContract.callSale(
+            secondNewTokenId,
+            wrapperStrategy,
+            abi.encodeWithSelector(
+                ERC20FixedPriceSaleStrategy.setSale.selector,
+                secondNewTokenId,
+                ERC20FixedPriceSaleStrategy.ERC20SalesConfig({
+                    maxTokensPerAddress: 100,
+                    fundsRecipient: alice,
+                    pricePerToken: 1 ether,
+                    currency: wisdomCurrency
+                })
+            )
+        );
+
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        deal(address(wisdomCurrency), bob, 2 ether);
+        deal(bob, 1 ether);
+
+        wisdomCurrency.approve(address(wrapperStrategy), 2 ether);
+
+        tokenContract.mint{value: ZORA_MINT_FEE}(wrapperStrategy, 1, 1, abi.encode(bob));
+        secondTokenContract.mint{value: ZORA_MINT_FEE}(wrapperStrategy, 1, 1, abi.encode(bob));
+
+        assertEq(wisdomCurrency.balanceOf(address(alice)), 2 ether);
+        assertEq(wisdomCurrency.balanceOf(address(bob)), 0 ether);
         assertEq(tokenContract.balanceOf(bob, 1), 1);
-        // Zora gets a fee
-        assertEq(address(zoraFeesTreasury).balance, initialTreasureBalance + ZORA_MINT_FEE);
-        // Bob pays the fee
-        assertEq(address(bob).balance, bobEthBalance - 0.1 ether - ZORA_MINT_FEE);
-        // TODO this should revert, not mint the token
-        assertEq(address(alice).balance, 0 ether);
+        assertEq(secondTokenContract.balanceOf(bob, 1), 1);
     }
 }
