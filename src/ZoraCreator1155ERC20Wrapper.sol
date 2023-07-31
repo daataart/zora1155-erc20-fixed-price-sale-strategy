@@ -30,7 +30,6 @@ contract ZoraCreator1155ERC20Wrapper is LimitedMintPerAddress, ReentrancyGuardUp
 
     error SaleEnded();
     error SaleHasNotStarted();
-    error WrongValueSent();
     error InvalidFundsRecipient();
 
     event ERC20SaleSet(address tokenContract, uint256 tokenId, ERC20SalesConfig config);
@@ -81,11 +80,6 @@ contract ZoraCreator1155ERC20Wrapper is LimitedMintPerAddress, ReentrancyGuardUp
         // Check sale start
         if (block.timestamp < externalConfig.saleStart) {
             revert SaleHasNotStarted();
-        }
-
-        // Value sent should be 0 here, otherwise eth will be trapped
-        if (msg.value > 0) {
-            revert WrongValueSent();
         }
 
         // Check minted per address limit
