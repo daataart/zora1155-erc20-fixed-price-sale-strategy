@@ -1,39 +1,30 @@
-# <h1 align="center"> Forge Template </h1>
+# Zora1155 Fixed Price Strategy for ERC20s
 
-**Template repository for getting started quickly with Foundry projects**
+**WARNING: as yet this contract is not fit for use, due to [this issue](https://github.com/ourzora/zora-1155-contracts/issues/126) - see below**
 
-![Github Actions](https://github.com/foundry-rs/forge-template/workflows/CI/badge.svg)
+This repo contains an `IMinter1155` contract, which an be used as a sale strategy/minting control for a Zora Creator 1155 contract.
 
-## Getting Started
+It allows for 1155 mints for a price denominated in any ERC20.
 
-Click "Use this template" on [GitHub](https://github.com/foundry-rs/forge-template) to create a new repository with this repo as the initial state.
+This strategy is intended to wrap an existing, deployed ZoraFixedPriceSaleStrategy. This is so the ERC20 strategy can inherit the start/end times from the wrapped strategy, which makes maintaining both strategies in parallel easier.
 
-Or, if your repo already exists, run:
-```sh
-forge init
-forge build
-forge test
-```
+Caveats:
+* The ERC20 strategy has its own `maxTokensPerAddress` value. e.g. if your ETH strategy has a max per address of 5 and your ERC20 strategy has a max per address of 5, some address could mint a total of 10. The overall supply of the token is respected regardless.
+* You must set a funds recipient for each token. There's no way to withdraw an ERC20 from the 1155 contract as you can with ETH.
 
-## Writing your first test
+### Current major problem
+Due to [this issue](https://github.com/ourzora/zora-1155-contracts/issues/126), there is no way for the strategy to know who the caller of the mint function is on the token contract. At the moment the price in the specified ERC20 is transferred from the _recipient of the token_. However, this causes a major issue if someone inadvertently approves a higher allowance than the exact price of their first mint. At that point, anyone who uses this strategy may create a drop with a price denominated in the same ERC20 and then mint to that recipient, capturing any excess ERC20 allowance for themselves.
 
-All you need is to `import forge-std/Test.sol` and then inherit it from your test contract. Forge-std's Test contract comes with a pre-instatiated [cheatcodes environment](https://book.getfoundry.sh/cheatcodes/), the `vm`. It also has support for [ds-test](https://book.getfoundry.sh/reference/ds-test.html)-style logs and assertions. Finally, it supports Hardhat's [console.log](https://github.com/brockelmore/forge-std/blob/master/src/console.sol). The logging functionalities require `-vvvv`.
+For now, we might make this contract Ownable and restrict its use, then at least the trust relationship established with the owner holds for any other sales added to this strategy.
 
-```solidity
-pragma solidity 0.8.10;
-
-import "forge-std/Test.sol";
-
-contract ContractTest is Test {
-    function testExample() public {
-        vm.roll(100);
-        console.log(1);
-        emit log("hi");
-        assertTrue(true);
-    }
-}
-```
+Alternatively, we could explore using the `adminMint` function on the IZoraCreator1155 interface, and wrapping the token contract instead of the strategy, bypassing the `mint` function altogether. This would allow the contract to transfer from the EAO/contract that is doing the minting, rather than the recipient of the token.
 
 ## Development
 
 This project uses [Foundry](https://getfoundry.sh). See the [book](https://book.getfoundry.sh/getting-started/installation.html) for instructions on how to install and use Foundry.
+
+The tests are intended to be run against a mainnet fork. So,
+
+```bash
+forge test --fork-url {insert a mainnet ethereum rpc url here}
+```
