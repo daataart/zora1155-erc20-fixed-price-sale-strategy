@@ -66,7 +66,6 @@ contract ZoraCreator1155ERC20Wrapper is LimitedMintPerAddress, ReentrancyGuardUp
     /// @param mintTo The address to mint to
     function mint(IZoraCreator1155 tokenContract, uint256 tokenId, uint256 quantity, address mintTo)
         external
-        payable
         nonReentrant
     {
         ERC20SalesConfig memory internalConfig = _salesConfigs[address(tokenContract)][tokenId];
