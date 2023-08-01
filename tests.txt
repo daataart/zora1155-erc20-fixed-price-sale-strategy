@@ -31,7 +31,8 @@ For wrapper contract
 
 All the tests above ^^ and any existing tests, plus:
 
-Test that the erc20 is always transferred from the caller, not the recipient (i.e. try with those two being different)
+Test that the erc20 is always transferred from the caller, not the recipient 
+(i.e. try with those two being different)
 Test that the wrapper doesn't work for a token contract it's not an admin of
 
 
