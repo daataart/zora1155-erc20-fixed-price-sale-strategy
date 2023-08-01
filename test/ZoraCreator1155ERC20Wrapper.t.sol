@@ -25,7 +25,7 @@ IERC20 constant usdc = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
 address constant zoraFeesTreasury = address(0xd1d1D4e36117aB794ec5d4c78cBD3a8904E691D0);
 uint256 constant ZORA_MINT_FEE = 0.000777 ether;
 
-contract TestERC20FixedPriceSaleStrategy is Test {
+contract TestZoraCreator1155ERC20Wrapper is Test {
     // Define a variable to hold the wrapper strategy
     ZoraCreator1155ERC20Wrapper wrapper;
     // Define an address for testing

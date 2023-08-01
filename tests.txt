@@ -35,6 +35,10 @@ Test that the erc20 is always transferred from the caller, not the recipient
 (i.e. try with those two being different)
 Test that the wrapper doesn't work for a token contract it's not an admin of
 
+Only a sales or admin should be able to set sale and reset sale (need to test the happy and the unhappy paths)
 
+Tests for all events emitted in all functions
+
+Tests for contractName, contractUri, contractVersion
 
 

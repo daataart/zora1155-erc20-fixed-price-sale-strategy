@@ -31,26 +31,56 @@ contract ZoraCreator1155ERC20Wrapper is LimitedMintPerAddress, ReentrancyGuardUp
     error SaleEnded();
     error SaleHasNotStarted();
     error InvalidFundsRecipient();
+    error UserMissingRoleForToken(IZoraCreator1155 tokenContract, address user, uint256 tokenId, uint256 role);
 
-    event ERC20SaleSet(address tokenContract, uint256 tokenId, ERC20SalesConfig config);
-    event ERC20Purchase(address tokenContract, uint256 tokenId, uint256 pricePerToken, address buyer);
+    event ERC20SaleSet(address sender, IZoraCreator1155 tokenContract, uint256 tokenId, ERC20SalesConfig config);
+    event ERC20Purchase(
+        address sender, IZoraCreator1155 tokenContract, uint256 tokenId, uint256 pricePerToken, address buyer
+    );
+
+    /// @notice Modifier checking if the user is an admin or has a role
+    /// @dev This reverts if the msg.sender is not an admin for the given token id or contract
+    /// @param tokenId tokenId to check
+    /// @param role role to check
+    modifier onlyAdminOrRole(IZoraCreator1155 tokenContract, uint256 tokenId, uint256 role) {
+        if (!tokenContract.isAdminOrRole(msg.sender, tokenId, role)) {
+            revert UserMissingRoleForToken(tokenContract, msg.sender, tokenId, role);
+        }
+        _;
+    }
+
+    function contractName() external pure returns (string memory) {
+        return "ZoraCreator1155ERC20Wrapper";
+    }
+
+    function contractURI() external pure returns (string memory) {
+        return "https://github.com/daataart/zora1155-erc20-fixed-price-sale-strategy";
+    }
+
+    function contractVersion() external pure returns (string memory) {
+        return "1.0.0";
+    }
 
     /// @notice The sales configurations for each token
     /// @dev token contract -> tokenId -> settings
     mapping(address => mapping(uint256 => ERC20SalesConfig)) internal _salesConfigs;
 
-    /// @notice allows the owner of the contract to set sale config for a given token
+    /// @notice Allows a sender with the Sales or Admin permission on the underlying token contract
+    ///         to set sale config for a given tokenId.
     /// @param tokenId the tokenId
     /// @param salesConfig the salesConfig
-    function setSale(IZoraCreator1155 tokenContract, uint256 tokenId, ERC20SalesConfig memory salesConfig) external {
+    function setSale(IZoraCreator1155 tokenContract, uint256 tokenId, ERC20SalesConfig memory salesConfig)
+        external
+        onlyAdminOrRole(tokenContract, tokenId, tokenContract.PERMISSION_BIT_SALES())
+    {
         _salesConfigs[address(tokenContract)][tokenId] = salesConfig;
         if (salesConfig.fundsRecipient == address(0)) {
             revert InvalidFundsRecipient();
         }
-        emit ERC20SaleSet(msg.sender, tokenId, salesConfig);
+        emit ERC20SaleSet(msg.sender, tokenContract, tokenId, salesConfig);
     }
 
-    /// @notice getter for a token's sales config
+    /// @notice Getter for a token's sales config.
     /// @param tokenContract the token contract
     /// @param tokenId the tokenId
     /// @return the sales config
@@ -58,7 +88,18 @@ contract ZoraCreator1155ERC20Wrapper is LimitedMintPerAddress, ReentrancyGuardUp
         return _salesConfigs[address(tokenContract)][tokenId];
     }
 
-    /// @notice Mint tokens given a token contract and minter arguments
+    /// @notice Deletes the sale config for a given token.
+    /// @param tokenContract the token contract
+    /// @param tokenId the tokenId
+    function resetSale(IZoraCreator1155 tokenContract, uint256 tokenId)
+        external
+        onlyAdminOrRole(tokenContract, tokenId, tokenContract.PERMISSION_BIT_SALES())
+    {
+        delete _salesConfigs[address(tokenContract)][tokenId];
+        emit ERC20SaleSet(msg.sender, tokenContract, tokenId, _salesConfigs[address(tokenContract)][tokenId]);
+    }
+
+    /// @notice Mint tokens given a token contract and minter arguments.
     /// @param tokenContract The token contract to mint
     /// @param tokenId The token ID to mint
     /// @param quantity The quantity of tokens to mint
@@ -97,6 +138,6 @@ contract ZoraCreator1155ERC20Wrapper is LimitedMintPerAddress, ReentrancyGuardUp
             msg.sender, internalConfig.fundsRecipient, internalConfig.pricePerToken * quantity
         );
 
-        emit ERC20Purchase(msg.sender, tokenId, internalConfig.pricePerToken, mintTo);
+        emit ERC20Purchase(msg.sender, tokenContract, tokenId, internalConfig.pricePerToken, mintTo);
     }
 }
