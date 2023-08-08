@@ -4,8 +4,8 @@ pragma solidity ^0.8.13;
 import "forge-std/Script.sol";
 import "zora-1155-contracts/interfaces/IZoraCreator1155.sol";
 
-address constant WRAPPER_ADDRESS = 0x0000000;
-address constant TOKEN_CONTRACT = 0x0000000;
+address constant WRAPPER_ADDRESS = 0x0000000000000000000000000000000000000000;
+address constant TOKEN_CONTRACT = 0x0000000000000000000000000000000000000000;
 uint256 constant tokenId = 0;
 
 contract SetAdminPermissions is Script {
