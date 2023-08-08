@@ -26,7 +26,7 @@ contract ERC20FixedPriceSaleStrategy is SaleStrategy, LimitedMintPerAddress {
     error InvalidFundsRecipient();
 
     event ERC20SaleSet(address tokenContract, uint256 tokenId, ERC20SalesConfig config);
-    event ERC20Purchase(address tokenContract, uint256 tokenId, uint256 pricePerToken, address buyer);
+    event ERC20Purchase(address tokenContract, uint256 tokenId, uint256 pricePerToken, address buyer, address mintTo);
 
     /// target -> tokenId -> settings
     mapping(address => mapping(uint256 => ERC20SalesConfig)) internal _salesConfigs;
@@ -68,7 +68,7 @@ contract ERC20FixedPriceSaleStrategy is SaleStrategy, LimitedMintPerAddress {
     /// @param ethValueSent The amount of ETH sent with the transaction
     /// @param minterArguments The arguments passed to the minter, which should be the address to mint to
     function requestMint(
-        address,
+        address sender,
         uint256 tokenId,
         uint256 quantity,
         uint256 ethValueSent,
@@ -107,9 +107,9 @@ contract ERC20FixedPriceSaleStrategy is SaleStrategy, LimitedMintPerAddress {
         commands.mint(mintTo, tokenId, quantity);
 
         // If an ERC20 sales config doesn't exist, this will fail
-        internalConfig.currency.transferFrom(mintTo, recipient, internalConfig.pricePerToken * quantity);
+        internalConfig.currency.transferFrom(sender, recipient, internalConfig.pricePerToken * quantity);
 
-        emit ERC20Purchase(msg.sender, tokenId, internalConfig.pricePerToken, mintTo);
+        emit ERC20Purchase(msg.sender, tokenId, internalConfig.pricePerToken, sender, mintTo);
     }
 
     /// @notice Deletes the sale config for a given token
