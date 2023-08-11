@@ -1,5 +1,6 @@
 @openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
 @openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/
+@zoralabs/openzeppelin-contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/
 ds-test/=lib/forge-std/lib/ds-test/src/
 openzeppelin-contracts/=lib/openzeppelin-contracts/
 zora-1155-contracts/=lib/zora-1155-contracts/src/

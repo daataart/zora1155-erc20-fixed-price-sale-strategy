@@ -15,29 +15,11 @@ test that zero address as fundsRecipient causes a revert [DONE]
 test that the zora fee is deducted correctly for $WISDOM sales [DONE]
 test specifically for buying on a strat with no active config [DONE] 
 and vice versa [DONE]
-test multiple contract owners using the same strategy  
-
-
-
-
-
-test_MintedPerRecipientGetter
-test_fixedPriceSaleSupportsInterface
-
-
-
-For wrapper contract
-====================
-
-All the tests above ^^ and any existing tests, plus:
-
-Test that the erc20 is always transferred from the caller, not the recipient 
-(i.e. try with those two being different) -- The caller is the person calling mint, they should always be the one transferring the ERC20
-Test that the wrapper doesn't work for a token contract it's not an admin of
-
-Only a sales or admin should be able to set sale and reset sale (need to test the happy and the unhappy paths)
-
+test multiple contract owners using the same strategy  [DONE]
+(i.e. try with those two being different) -- The caller is the person calling mint, they should always be the one transferring the ERC20 [DONE]
+Test that the wrapper doesn't work for a token contract it's not an admin of [DONE]
+Only a sales or admin should be able to set sale and reset sale (need to test the happy and the unhappy paths) [DONE]
+Tests for contractName, contractUri, contractVersion [DONE]
 Tests for all events emitted in all functions
-Tests for contractName, contractUri, contractVersion
 
 
