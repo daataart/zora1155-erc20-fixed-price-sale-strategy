@@ -20,5 +20,28 @@ contract SetAdminPermissions is Script {
     }
 }
 
+contract SetSale is Script {
+    function run() external {
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        vm.startBroadcast(deployerPrivateKey);
+        // call the wrapper strategy to set up the sale
+        tokenContract.callSale(
+            tokenId,
+            WRAPPER_ADDRESS,
+            abi.encodeWithSelector(
+                ERC20FixedPriceSaleStrategy.setSale.selector,
+                tokenId,
+                ERC20FixedPriceSaleStrategy.ERC20SalesConfig({
+                    maxTokensPerAddress: 100,
+                    fundsRecipient: alice,
+                    pricePerToken: 1 ether,
+                    currency: wisdomCurrency
+                })
+            )
+        );
+        vm.stopBroadcast();
+    }
+}
+
 // To run this script:
 // source .env && forge script script/SetAdminPermissions.s.sol:SetAdminPermissions --rpc-url $GOERLI_RPC_URL --broadcast -vvvv
