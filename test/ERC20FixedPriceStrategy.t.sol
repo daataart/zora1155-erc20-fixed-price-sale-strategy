@@ -1688,4 +1688,9 @@ contract TestERC20FixedPriceSaleStrategy is Test {
 
         vm.stopPrank();
     }
+
+    function test_supportsInterface() external {
+        bytes4 erc165InterfaceId = wrapperStrategy.supportsInterface.selector;
+        assertTrue(wrapperStrategy.supportsInterface(erc165InterfaceId));
+    }
 }
