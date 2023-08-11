@@ -1607,4 +1607,85 @@ contract TestERC20FixedPriceSaleStrategy is Test {
             abi.encodeWithSelector(ERC20FixedPriceSaleStrategy.resetSale.selector, newTokenId)
         );
     }
+
+    function test_ContractPropertiesAreCorrect() public {
+        vm.startPrank(alice);
+        //A dynamic array of bytes named actions is created with a size of 0. This array is used to store actions, but in this case, it is initialized as an empty array.
+        bytes[] memory actions = new bytes[](0);
+        // The createContract function is called on the factory contract, which creates a new Zora collection. The function takes the following parameters:
+        // name: The name of the collection.
+        // symbol: The symbol of the collection.
+        // royalty: The royalty configuration of the collection.
+        // creator: The address of the creator of the collection.
+        // actions: The actions that are to be performed on the collection.
+        address _tokenContract = factory.createContract(
+            "test", "test", ICreatorRoyaltiesControl.RoyaltyConfiguration(0, 0, address(0)), alice, actions
+        );
+
+        // The address of the new collection (_tokenContract) is assigned to the variable tokenContract.
+        IZoraCreator1155 tokenContract = IZoraCreator1155(_tokenContract);
+
+        // set up a new token, setupNewToken takes two parameters:
+        // tokenURI: The URI of the token.
+        // supply: The supply of the token.
+        uint256 newTokenId = tokenContract.setupNewToken("", 100);
+
+        // give the wrappedStrategy and the wrapperStrategy the minter role
+        // this is the original Strategy from Zora
+        tokenContract.addPermission(1, address(wrappedStrategy), tokenContract.PERMISSION_BIT_MINTER());
+        // this is the new Strategy
+        tokenContract.addPermission(1, address(wrapperStrategy), tokenContract.PERMISSION_BIT_MINTER());
+
+        // call the wrapped strategy to set up the sale
+        tokenContract.callSale(
+            newTokenId,
+            wrappedStrategy,
+            abi.encodeWithSelector(
+                ZoraCreatorFixedPriceSaleStrategy.setSale.selector,
+                newTokenId,
+                ZoraCreatorFixedPriceSaleStrategy.SalesConfig({
+                    pricePerToken: 1 ether,
+                    saleStart: 0,
+                    saleEnd: type(uint64).max,
+                    maxTokensPerAddress: 0,
+                    fundsRecipient: address(0)
+                })
+            )
+        );
+
+        // call the wrapper strategy to set up the sale
+        tokenContract.callSale(
+            newTokenId,
+            wrapperStrategy,
+            abi.encodeWithSelector(
+                ERC20FixedPriceSaleStrategy.setSale.selector,
+                newTokenId,
+                ERC20FixedPriceSaleStrategy.ERC20SalesConfig({
+                    maxTokensPerAddress: 100,
+                    fundsRecipient: alice,
+                    pricePerToken: 1 ether,
+                    currency: wisdomCurrency
+                })
+            )
+        );
+
+        // Deploy the contract
+
+        // Get the contract properties
+        string memory name = wrapperStrategy.contractName();
+        string memory uri = wrapperStrategy.contractURI();
+        string memory version = wrapperStrategy.contractVersion();
+
+        // Expected values
+        string memory expectedName = "ERC20FixedPriceSaleStrategy";
+        string memory expectedUri = "https://github.com/daataart/zora1155-erc20-fixed-price-sale-strategy";
+        string memory expectedVersion = "1.0.0";
+
+        // Assert the properties
+        assertEq(name, expectedName, "Contract name is not as expected");
+        assertEq(uri, expectedUri, "Contract URI is not as expected");
+        assertEq(version, expectedVersion, "Contract version is not as expected");
+
+        vm.stopPrank();
+    }
 }
