@@ -8,10 +8,11 @@ import "zora-1155-contracts/interfaces/IZoraCreator1155.sol";
 import {ZoraCreatorFixedPriceSaleStrategy} from
     "zora-1155-contracts/minters/fixed-price/ZoraCreatorFixedPriceSaleStrategy.sol";
 import {ILimitedMintPerAddress} from "zora-1155-contracts/interfaces/ILimitedMintPerAddress.sol";
-
+import "src/TransferHookReceiver.sol";
 import "zora-1155-contracts/interfaces/ICreatorRoyaltiesControl.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "forge-std/StdUtils.sol";
+import {ZoraCreator1155Impl} from "zora-1155-contracts/nft/ZoraCreator1155Impl.sol";
 
 // factory: This is a constant variable that is assigned the address where the IZoraCreator1155Factory contract is deployed.
 IZoraCreator1155Factory constant factory = IZoraCreator1155Factory(0xA6C5f2DE915240270DaC655152C3f6A91748cb85);
@@ -101,6 +102,10 @@ contract TestERC20FixedPriceSaleStrategy is Test {
             )
         );
 
+        TransferHookReceiver hookReceiver = new TransferHookReceiver();
+
+        ZoraCreator1155Impl(address(tokenContract)).setTransferHook(hookReceiver);
+
         vm.stopPrank();
 
         vm.startPrank(bob);
@@ -121,6 +126,11 @@ contract TestERC20FixedPriceSaleStrategy is Test {
         assertEq(wisdomCurrency.balanceOf(address(alice)), 1 ether);
         assertEq(wisdomCurrency.balanceOf(address(bob)), 0 ether);
         assertEq(tokenContract.balanceOf(bob, 1), 1);
+
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = 1;
+
+        tokenContract.safeBatchTransferFrom(bob, alice, tokenIds, tokenIds, abi.encode(bob));
     }
 
     function test_SaleStart() external {
